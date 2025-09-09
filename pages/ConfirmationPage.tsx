@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useLocalization } from '../context/LocalizationContext';
+import { generateOrderPdf } from '../utils/pdfGenerator';
 import type { Order } from '../types';
 
 interface ConfirmationPageProps {
@@ -19,6 +20,7 @@ const ConfirmationPage: React.FC<ConfirmationPageProps> = ({ navigateTo, order }
     const { t } = useLocalization();
     const [referralApplied, setReferralApplied] = useState(false);
     const [userName, setUserName] = useState<string | null>(null);
+    const [isAuthenticated, setIsAuthenticated] = useState(false);
 
     useEffect(() => {
         const applied = sessionStorage.getItem('referralApplied');
@@ -29,12 +31,19 @@ const ConfirmationPage: React.FC<ConfirmationPageProps> = ({ navigateTo, order }
 
         const token = localStorage.getItem('authToken');
         if (token) {
+            setIsAuthenticated(true);
             const decoded = parseJwt(token);
             if (decoded && decoded.name) {
                 setUserName(decoded.name.split(' ')[0]); // Get first name
             }
         }
     }, []);
+
+    const handleDownloadReceipt = () => {
+        if (order) {
+            generateOrderPdf(order, t);
+        }
+    };
 
     const greetingHeader = (
         <h2 className="text-4xl font-serif font-bold text-green-400 mb-4">
@@ -52,13 +61,15 @@ const ConfirmationPage: React.FC<ConfirmationPageProps> = ({ navigateTo, order }
                     </svg>
                 </div>
                 {greetingHeader}
-                <p className="text-lg text-gray-300 mb-8">{t('thankYou')}</p>
-                <button
-                    onClick={() => navigateTo('home')}
-                    className="bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold px-8 py-3 rounded-lg hover:opacity-90 transition-opacity transform hover:scale-105"
-                >
-                    {t('backToHome')}
-                </button>
+                <p className="text-lg text-gray-300 mb-8">{isAuthenticated ? t('thankYouPersonalized') : t('thankYou')}</p>
+                <div className="text-center mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
+                    <button
+                        onClick={() => navigateTo('home')}
+                        className="bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold px-8 py-3 rounded-lg hover:opacity-90 transition-opacity transform hover:scale-105 w-full sm:w-auto"
+                    >
+                        {t('backToHome')}
+                    </button>
+                </div>
             </div>
         );
     }
@@ -75,7 +86,7 @@ const ConfirmationPage: React.FC<ConfirmationPageProps> = ({ navigateTo, order }
                     </svg>
                 </div>
                 {greetingHeader}
-                <p className="text-lg text-gray-300">{t('thankYou')}</p>
+                <p className="text-lg text-gray-300">{isAuthenticated ? t('thankYouPersonalized') : t('thankYou')}</p>
             </div>
 
             <div className="bg-gray-800 p-6 sm:p-8 rounded-lg shadow-lg">
@@ -138,12 +149,18 @@ const ConfirmationPage: React.FC<ConfirmationPageProps> = ({ navigateTo, order }
                 </div>
             )}
 
-            <div className="text-center mt-10">
+            <div className="text-center mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
                 <button
                     onClick={() => navigateTo('home')}
-                    className="bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold px-8 py-3 rounded-lg hover:opacity-90 transition-opacity transform hover:scale-105"
+                    className="bg-gray-600 text-white font-bold px-8 py-3 rounded-lg hover:bg-gray-500 transition-opacity w-full sm:w-auto"
                 >
                     {t('backToHome')}
+                </button>
+                <button
+                    onClick={handleDownloadReceipt}
+                    className="bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold px-8 py-3 rounded-lg hover:opacity-90 transition-opacity transform hover:scale-105 w-full sm:w-auto"
+                >
+                    {t('downloadReceipt')}
                 </button>
             </div>
         </div>

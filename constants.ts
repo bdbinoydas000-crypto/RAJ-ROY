@@ -1,4 +1,4 @@
-import type { Product, Translations, Order, Address, Review, CarouselSlide } from './types';
+import type { Product, Translations, Order, Address, Review, CarouselSlide, Category } from './types';
 
 export const MOCK_REVIEWS: Review[] = [
     { id: 'r1', productId: 'p1', userName: 'Alice', rating: 5, comment: 'Absolutely beautiful frame! The glow is magical.', date: '2024-05-10' },
@@ -46,13 +46,31 @@ export const PRODUCTS: Product[] = [
     { id: 'p9', nameKey: 'starMap', descriptionKey: 'starMapDesc', price: 1499, imageUrl: 'https://picsum.photos/seed/starmap/600/600', categoryKey: 'anniversaryGifts', customizable: true, ...calculateReviewStats('p9') },
 ];
 
-export const CATEGORIES = {
-    birthdayGifts: { nameKey: 'birthdayGifts' },
-    loveGifts: { nameKey: 'loveGifts' },
-    anniversaryGifts: { nameKey: 'anniversaryGifts' },
-    photoServices: { nameKey: 'photoServices' },
-    customPrints: { nameKey: 'customPrints' },
-    oldPhotos: { nameKey: 'oldPhotos' },
+export const CATEGORIES: { [key: string]: Category } = {
+    birthdayGifts: { 
+        nameKey: 'birthdayGifts', 
+        backgroundImageUrl: 'https://i.imgur.com/K2yY13D.jpeg' 
+    },
+    loveGifts: { 
+        nameKey: 'loveGifts', 
+        backgroundImageUrl: 'https://picsum.photos/seed/love-bg/1920/1080' 
+    },
+    anniversaryGifts: { 
+        nameKey: 'anniversaryGifts', 
+        backgroundImageUrl: 'https://picsum.photos/seed/anniversary-bg/1920/1080' 
+    },
+    photoServices: { 
+        nameKey: 'photoServices', 
+        backgroundImageUrl: 'https://picsum.photos/seed/services-bg/1920/1080' 
+    },
+    customPrints: { 
+        nameKey: 'customPrints', 
+        backgroundImageUrl: 'https://picsum.photos/seed/prints-bg/1920/1080' 
+    },
+    oldPhotos: { 
+        nameKey: 'oldPhotos', 
+        backgroundImageUrl: 'https://picsum.photos/seed/oldphoto-bg/1920/1080' 
+    },
 };
 
 export const CAROUSEL_SLIDES: CarouselSlide[] = [
@@ -289,8 +307,10 @@ export const translations: Translations = {
     // Confirmation
     orderConfirmed: { en: "Order Confirmed!", bn: "অর্ডার নিশ্চিত হয়েছে!" },
     greetingPersonalized: { en: "Hi, {name}!", bn: "হাই, {name}!"},
-    thankYou: { en: "Thank you for your purchase.", bn: "আপনার কেনার জন্য ধন্যবাদ।" },
+    thankYou: { en: "Thank you for your purchase. A confirmation receipt has been sent to your email.", bn: "আপনার কেনার জন্য ধন্যবাদ। একটি নিশ্চিতকরণ রসিদ আপনার ইমেলে পাঠানো হয়েছে।" },
+    thankYouPersonalized: { en: "Thank you for your purchase. You can track this order's progress in your profile.", bn: "আপনার কেনার জন্য ধন্যবাদ। আপনি আপনার প্রোফাইলের এই অর্ডারটির অগ্রগতি ট্র্যাক করতে পারেন।" },
     backToHome: { en: "Back to Home", bn: "হোমে ফিরে যান" },
+    downloadReceipt: { en: "Download Receipt", bn: "রসিদ ডাউনলোড করুন"},
 
     // OTP Modal
     otpVerification: { en: "OTP Verification", bn: "ওটিপি যাচাইকরণ" },

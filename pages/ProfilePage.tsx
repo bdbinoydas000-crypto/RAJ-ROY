@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useLocalization } from '../context/LocalizationContext';
 import { useReward } from '../context/RewardContext';
 import { MOCK_ORDERS, MOCK_ADDRESSES } from '../constants';
+import { generateOrderPdf } from '../utils/pdfGenerator';
 import type { Order, CartItem, OrderStatus } from '../types';
 import OrderStatusTracker from '../components/OrderStatusTracker';
 import TrackingModal from '../components/TrackingModal';
@@ -36,7 +37,7 @@ interface UserInfo {
 }
 
 // Order Detail component
-const OrderDetails: React.FC<{ order: Order, onTrack: () => void, onCancel: () => void }> = ({ order, onTrack, onCancel }) => {
+const OrderDetails: React.FC<{ order: Order, onTrack: () => void, onCancel: () => void, onDownload: () => void }> = ({ order, onTrack, onCancel, onDownload }) => {
     const { t } = useLocalization();
     return (
         <div className="bg-gray-700/50 p-4 mt-4 rounded-md animate-fade-in-up space-y-6">
@@ -59,7 +60,7 @@ const OrderDetails: React.FC<{ order: Order, onTrack: () => void, onCancel: () =
 
             <div>
                 <OrderStatusTracker status={order.status} />
-                <div className="text-center mt-4 flex justify-center items-center gap-4">
+                <div className="text-center mt-4 flex flex-wrap justify-center items-center gap-4">
                     {['Shipped', 'Out for Delivery', 'Delivered'].includes(order.status) && order.trackingId && (
                         <button 
                             onClick={onTrack}
@@ -76,6 +77,12 @@ const OrderDetails: React.FC<{ order: Order, onTrack: () => void, onCancel: () =
                             Cancel Order
                         </button>
                     )}
+                    <button 
+                        onClick={onDownload}
+                        className="bg-gray-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-gray-500 transition-colors"
+                    >
+                        {t('downloadReceipt')}
+                    </button>
                 </div>
             </div>
         </div>
@@ -135,6 +142,10 @@ const ProfilePage: React.FC = () => {
 
     const toggleOrderDetails = (orderId: string) => {
         setExpandedOrderId(prevId => (prevId === orderId ? null : orderId));
+    };
+    
+    const handleDownloadReceipt = (order: Order) => {
+        generateOrderPdf(order, t);
     };
 
     const handleConfirmCancel = () => {
@@ -250,7 +261,7 @@ const ProfilePage: React.FC = () => {
                                         {expandedOrderId === order.id ? t('hideDetails') : t('viewDetails')}
                                     </button>
                                 </div>
-                                {expandedOrderId === order.id && <OrderDetails order={order} onTrack={() => setTrackingOrder(order)} onCancel={() => setOrderToCancel(order)} />}
+                                {expandedOrderId === order.id && <OrderDetails order={order} onTrack={() => setTrackingOrder(order)} onCancel={() => setOrderToCancel(order)} onDownload={() => handleDownloadReceipt(order)} />}
                             </div>
                         ))}
                     </div>

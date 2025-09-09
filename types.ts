@@ -73,6 +73,11 @@ export interface CarouselSlide {
     ctaLink: string;
 }
 
+export interface Category {
+    nameKey: string;
+    backgroundImageUrl: string;
+}
+
 export type Language = 'en' | 'bn';
 
 export interface Translations {
