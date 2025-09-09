@@ -1,8 +1,9 @@
 import React, { useMemo } from 'react';
 import type { Product } from '../types';
-import { PRODUCTS, CATEGORIES } from '../constants';
+import { PRODUCTS, CATEGORIES, CAROUSEL_SLIDES } from '../constants';
 import { useLocalization } from '../context/LocalizationContext';
 import ProductCard from '../components/ProductCard';
+import Carousel from '../components/Carousel';
 
 interface HomePageProps {
     onProductSelect: (product: Product) => void;
@@ -34,16 +35,18 @@ const HomePage: React.FC<HomePageProps> = ({ onProductSelect, searchQuery }) => 
     return (
         <div className="space-y-16">
             {!searchQuery && (
-                <section className="text-center animate-fade-in-up">
-                    <h2 className="text-4xl md:text-6xl font-serif font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-500 mb-4">
-                        Craft Your Memories
-                    </h2>
-                    <p className="text-lg text-gray-300 max-w-2xl mx-auto">
-                        Turn precious moments into timeless gifts. Personalized, unique, and delivered with love.
-                    </p>
-                </section>
+                <Carousel slides={CAROUSEL_SLIDES} />
             )}
 
+            <section className="text-center animate-fade-in-up">
+                <h2 className="text-4xl md:text-6xl font-serif font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-500 mb-4">
+                    Craft Your Memories
+                </h2>
+                <p className="text-lg text-gray-300 max-w-2xl mx-auto">
+                    Turn precious moments into timeless gifts. Personalized, unique, and delivered with love.
+                </p>
+            </section>
+            
             <section>
                  {categoriesWithProducts.length > 0 ? (
                     categoriesWithProducts.map(({ key, category, products }) => (

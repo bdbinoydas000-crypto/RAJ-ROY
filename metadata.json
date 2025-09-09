@@ -1,7 +1,5 @@
 {
   "name": "GiftScape Studio",
   "description": "An elegant, cinematic web application for creating and purchasing personalized photo gifts. Features include advanced photo customization, AI-powered photo restoration, and a seamless e-commerce experience with multi-language support.",
-  "requestFramePermissions": [
-    "camera"
-  ]
+  "requestFramePermissions": []
 }

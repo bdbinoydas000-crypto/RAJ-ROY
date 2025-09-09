@@ -1,10 +1,12 @@
 import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
-import type { Product, CustomizationState, ProductVariation } from '../types';
+import type { Product, CustomizationState, ProductVariation, Review } from '../types';
 import { useLocalization } from '../context/LocalizationContext';
 import { useCart } from '../context/CartContext';
 import { useWishlist } from '../context/WishlistContext';
 import { useReward } from '../context/RewardContext';
 import { restorePhotoWithAI } from '../services/geminiService';
+import { MOCK_REVIEWS } from '../constants';
+import StarRating from '../components/StarRating';
 
 // --- START of inlined ShareModal component ---
 interface ShareModalProps {
@@ -126,6 +128,36 @@ const ShareModal: React.FC<ShareModalProps> = ({ product, referralUrl, onClose, 
 };
 // --- END of inlined ShareModal component ---
 
+const parseJwt = (token: string) => {
+    try {
+        return JSON.parse(atob(token.split('.')[1]));
+    } catch (e) {
+        return null;
+    }
+};
+
+const InteractiveStarRating: React.FC<{ rating: number; setRating: (r: number) => void }> = ({ rating, setRating }) => {
+    const [hoverRating, setHoverRating] = useState(0);
+    return (
+        <div className="flex items-center">
+            {[1, 2, 3, 4, 5].map(star => (
+                <button
+                    type="button"
+                    key={star}
+                    aria-label={`Rate ${star} stars`}
+                    className="text-2xl outline-none focus:outline-none"
+                    onClick={() => setRating(star)}
+                    onMouseEnter={() => setHoverRating(star)}
+                    onMouseLeave={() => setHoverRating(0)}
+                >
+                    <svg className={`h-7 w-7 transition-colors ${ (hoverRating || rating) >= star ? 'text-yellow-400' : 'text-gray-600'}`} fill="currentColor" viewBox="0 0 20 20">
+                         <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                    </svg>
+                </button>
+            ))}
+        </div>
+    );
+};
 
 interface ProductPageProps {
     product: Product;
@@ -164,6 +196,17 @@ const ProductPage: React.FC<ProductPageProps> = ({ product, navigateTo, initialC
         grayscale: 0,
     });
     const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+
+    // Review State
+    const productReviews = useMemo(() => MOCK_REVIEWS.filter(r => r.productId === product.id), [product.id]);
+    const [reviews, setReviews] = useState<Review[]>([]);
+    const [newRating, setNewRating] = useState<number>(5);
+    const [newComment, setNewComment] = useState<string>('');
+    const [isSubmittingReview, setIsSubmittingReview] = useState<boolean>(false);
+
+    useEffect(() => {
+        setReviews(productReviews.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
+    }, [productReviews]);
 
     const fileInputRef = useRef<HTMLInputElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -274,6 +317,34 @@ const ProductPage: React.FC<ProductPageProps> = ({ product, navigateTo, initialC
         }
     };
 
+    const handleReviewSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!newComment.trim() || newRating === 0) {
+            alert("Please provide a rating and a comment.");
+            return;
+        }
+        setIsSubmittingReview(true);
+        
+        const token = localStorage.getItem('authToken');
+        const payload = token ? parseJwt(token) : {};
+        const userName = payload?.name || 'Valued Customer';
+
+        setTimeout(() => {
+            const newReview: Review = {
+                id: `r${Date.now()}`,
+                productId: product.id,
+                userName: userName,
+                rating: newRating,
+                comment: newComment,
+                date: new Date().toISOString().split('T')[0],
+            };
+            setReviews(prev => [newReview, ...prev]);
+            setIsSubmittingReview(false);
+            setNewComment('');
+            setNewRating(5);
+        }, 1000);
+    };
+
     const referralUrl = useMemo(() => {
         if (!isAuthenticated) return '';
 
@@ -281,7 +352,7 @@ const ProductPage: React.FC<ProductPageProps> = ({ product, navigateTo, initialC
         if (!token) return '';
 
         try {
-            const payload = JSON.parse(atob(token.split('.')[1]));
+            const payload = parseJwt(token);
             const userId = payload.email || payload.user;
             if (!userId) return '';
             const productUrl = window.location.href.split('?')[0].split('#')[0];
@@ -328,7 +399,17 @@ const ProductPage: React.FC<ProductPageProps> = ({ product, navigateTo, initialC
 
                 {/* Customizer Controls */}
                 <div className="space-y-6">
-                    <h2 className="text-3xl font-serif font-bold">{t('customizeYour')} {t(product.nameKey)}</h2>
+                    <div>
+                        <h2 className="text-3xl font-serif font-bold">{t('customizeYour')} {t(product.nameKey)}</h2>
+                        {product.reviewCount && product.reviewCount > 0 && (
+                            <div className="flex items-center gap-2 mt-2">
+                                <StarRating rating={product.averageRating || 0} />
+                                <span className="text-sm text-gray-400">
+                                    {product.averageRating?.toFixed(1)} stars ({product.reviewCount} reviews)
+                                </span>
+                            </div>
+                        )}
+                    </div>
                     
                     <div className="bg-gray-800 p-6 rounded-lg">
                         <h3 className="text-xl font-bold mb-4">1. {t('uploadPhoto')}</h3>
@@ -450,6 +531,58 @@ const ProductPage: React.FC<ProductPageProps> = ({ product, navigateTo, initialC
                     </div>
                 </div>
             </div>
+            {/* Reviews Section */}
+            <div className="mt-16 animate-fade-in-up">
+                <h3 className="text-3xl font-serif font-bold border-l-4 border-purple-500 pl-4 mb-6">{t('reviews')}</h3>
+
+                {isAuthenticated && (
+                    <div className="bg-gray-800 p-6 rounded-lg mb-8">
+                        <h4 className="text-xl font-bold mb-4">{t('writeReview')}</h4>
+                        <form onSubmit={handleReviewSubmit}>
+                            <div className="mb-4">
+                                <label htmlFor="rating" className="block text-sm font-medium text-gray-400 mb-2">{t('yourRating')}</label>
+                                <InteractiveStarRating rating={newRating} setRating={setNewRating} />
+                            </div>
+                            <div className="mb-4">
+                                <label htmlFor="comment" className="block text-sm font-medium text-gray-400 mb-2">{t('yourComment')}</label>
+                                <textarea 
+                                    id="comment" 
+                                    rows={4} 
+                                    value={newComment} 
+                                    onChange={e => setNewComment(e.target.value)}
+                                    className="w-full bg-gray-700 p-3 rounded-md border border-gray-600 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                    placeholder="Tell us what you think..."
+                                    required
+                                />
+                            </div>
+                            <button 
+                                type="submit" 
+                                disabled={isSubmittingReview}
+                                className="bg-purple-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-purple-700 transition-colors disabled:bg-gray-500"
+                            >
+                                {isSubmittingReview ? t('submitting') : t('submitReview')}
+                            </button>
+                        </form>
+                    </div>
+                )}
+
+                <div className="space-y-6">
+                    {reviews.length > 0 ? reviews.map(review => (
+                        <div key={review.id} className="bg-gray-800 p-5 rounded-lg animate-fade-in">
+                            <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-full bg-purple-500 flex items-center justify-center font-bold text-white flex-shrink-0">{review.userName.charAt(0)}</div>
+                                    <span className="font-bold">{review.userName}</span>
+                                </div>
+                                <StarRating rating={review.rating} />
+                            </div>
+                            <p className="text-gray-300 py-2">{review.comment}</p>
+                            <p className="text-xs text-gray-500 text-right mt-2">{new Date(review.date).toLocaleDateString()}</p>
+                        </div>
+                    )) : <p className="text-gray-500 text-center py-8">{t('noReviews')}</p>}
+                </div>
+            </div>
+
             {isShareModalOpen && (
                 <ShareModal 
                     product={product}

@@ -1,4 +1,24 @@
-import type { Product, Translations, Order, Address } from './types';
+import type { Product, Translations, Order, Address, Review, CarouselSlide } from './types';
+
+export const MOCK_REVIEWS: Review[] = [
+    { id: 'r1', productId: 'p1', userName: 'Alice', rating: 5, comment: 'Absolutely beautiful frame! The glow is magical.', date: '2024-05-10' },
+    { id: 'r2', productId: 'p1', userName: 'Bob', rating: 4, comment: 'Great product, but the large size was bigger than I expected.', date: '2024-05-12' },
+    { id: 'r3', productId: 'p2', userName: 'Charlie', rating: 5, comment: 'The AI restoration is unbelievable! It saved my grandparents wedding photo.', date: '2024-04-20' },
+    { id: 'r4', productId: 'p4', userName: 'Diana', rating: 5, comment: 'Perfect birthday gift, my friend loved it!', date: '2024-03-15' },
+    { id: 'r5', productId: 'p4', userName: 'Eve', rating: 3.5, comment: 'The printing was a bit faded on one side, but customer support was helpful.', date: '2024-03-18' },
+];
+
+// Helper to calculate review stats from the mock data
+const calculateReviewStats = (productId: string) => {
+    const productReviews = MOCK_REVIEWS.filter(r => r.productId === productId);
+    const reviewCount = productReviews.length;
+    if (reviewCount === 0) {
+        return { averageRating: 0, reviewCount: 0 };
+    }
+    const totalRating = productReviews.reduce((sum, review) => sum + review.rating, 0);
+    const averageRating = totalRating / reviewCount;
+    return { averageRating: parseFloat(averageRating.toFixed(1)), reviewCount };
+};
 
 export const PRODUCTS: Product[] = [
     { 
@@ -9,17 +29,18 @@ export const PRODUCTS: Product[] = [
         imageUrl: 'https://picsum.photos/seed/glowframe-s/600/600', 
         categoryKey: 'anniversaryGifts', 
         customizable: true,
+        ...calculateReviewStats('p1'),
         variations: [
             { id: 'p1-s', nameKey: 'glowFrameSmall', price: 1299, imageUrl: 'https://picsum.photos/seed/glowframe-s/600/600' },
             { id: 'p1-m', nameKey: 'glowFrameMedium', price: 1599, imageUrl: 'https://picsum.photos/seed/glowframe-m/600/600' },
             { id: 'p1-l', nameKey: 'glowFrameLarge', price: 1999, imageUrl: 'https://picsum.photos/seed/glowframe-l/600/600' },
         ]
     },
-    { id: 'p2', nameKey: 'photoRestore', descriptionKey: 'photoRestoreDesc', price: 899, imageUrl: 'https://picsum.photos/seed/photorestore/600/600', categoryKey: 'oldPhotos', customizable: true },
-    { id: 'p3', nameKey: 'customPrint', descriptionKey: 'customPrintDesc', price: 499, imageUrl: 'https://picsum.photos/seed/customprint/600/600', categoryKey: 'customPrints', customizable: true },
-    { id: 'p4', nameKey: 'birthdayMug', descriptionKey: 'birthdayMugDesc', price: 399, imageUrl: 'https://picsum.photos/seed/birthdaymug/600/600', categoryKey: 'birthdayGifts', customizable: true },
-    { id: 'p5', nameKey: 'loveCushion', descriptionKey: 'loveCushionDesc', price: 799, imageUrl: 'https://picsum.photos/seed/lovecushion/600/600', categoryKey: 'loveGifts', customizable: true },
-    { id: 'p6', nameKey: 'passportPhotos', descriptionKey: 'passportPhotosDesc', price: 199, imageUrl: 'https://picsum.photos/seed/passport/600/600', categoryKey: 'photoServices', customizable: false },
+    { id: 'p2', nameKey: 'photoRestore', descriptionKey: 'photoRestoreDesc', price: 899, imageUrl: 'https://picsum.photos/seed/photorestore/600/600', categoryKey: 'oldPhotos', customizable: true, ...calculateReviewStats('p2') },
+    { id: 'p3', nameKey: 'customPrint', descriptionKey: 'customPrintDesc', price: 499, imageUrl: 'https://picsum.photos/seed/customprint/600/600', categoryKey: 'customPrints', customizable: true, ...calculateReviewStats('p3') },
+    { id: 'p4', nameKey: 'birthdayMug', descriptionKey: 'birthdayMugDesc', price: 399, imageUrl: 'https://picsum.photos/seed/birthdaymug/600/600', categoryKey: 'birthdayGifts', customizable: true, ...calculateReviewStats('p4') },
+    { id: 'p5', nameKey: 'loveCushion', descriptionKey: 'loveCushionDesc', price: 799, imageUrl: 'https://picsum.photos/seed/lovecushion/600/600', categoryKey: 'loveGifts', customizable: true, ...calculateReviewStats('p5') },
+    { id: 'p6', nameKey: 'passportPhotos', descriptionKey: 'passportPhotosDesc', price: 199, imageUrl: 'https://picsum.photos/seed/passport/600/600', categoryKey: 'photoServices', customizable: false, ...calculateReviewStats('p6') },
 ];
 
 export const CATEGORIES = {
@@ -30,6 +51,41 @@ export const CATEGORIES = {
     customPrints: { nameKey: 'customPrints' },
     oldPhotos: { nameKey: 'oldPhotos' },
 };
+
+export const CAROUSEL_SLIDES: CarouselSlide[] = [
+    {
+        id: 'slide1',
+        imageUrl: 'https://picsum.photos/seed/carousel1/1200/600',
+        titleKey: 'carouselTitle1',
+        subtitleKey: 'carouselSubtitle1',
+        ctaKey: 'carouselCta1',
+        ctaLink: '#p1' // Could link to a product or category
+    },
+    {
+        id: 'slide2',
+        imageUrl: 'https://picsum.photos/seed/carousel2/1200/600',
+        titleKey: 'carouselTitle2',
+        subtitleKey: 'carouselSubtitle2',
+        ctaKey: 'carouselCta2',
+        ctaLink: '#p2'
+    },
+    {
+        id: 'slide3',
+        imageUrl: 'https://picsum.photos/seed/carousel3/1200/600',
+        titleKey: 'carouselTitle3',
+        subtitleKey: 'carouselSubtitle3',
+        ctaKey: 'carouselCta3',
+        ctaLink: '#p4'
+    },
+     {
+        id: 'slide4',
+        imageUrl: 'https://picsum.photos/seed/carousel4/1200/600',
+        titleKey: 'carouselTitle4',
+        subtitleKey: 'carouselSubtitle4',
+        ctaKey: 'carouselCta4',
+        ctaLink: '#loveGifts'
+    }
+];
 
 // MOCK DATA FOR PROFILE PAGE
 export const MOCK_ORDERS: Order[] = [
@@ -114,6 +170,20 @@ export const translations: Translations = {
     searchPlaceholder: { en: "Search for products...", bn: "পণ্য খুঁজুন..." },
     noResults: { en: "No products found for your search.", bn: "আপনার অনুসন্ধানের জন্য কোন পণ্য পাওয়া যায়নি।" },
     
+    // Carousel
+    carouselTitle1: { en: "New! Luminous Glow Frames", bn: "নতুন! উজ্জ্বল গ্লো ফ্রেম" },
+    carouselSubtitle1: { en: "Light up your memories with our backlit photo frames.", bn: "আমাদের ব্যাকলিট ফটো ফ্রেম দিয়ে আপনার স্মৃতিগুলিকে আলোকিত করুন।" },
+    carouselCta1: { en: "Explore Now", bn: "এখনই দেখুন" },
+    carouselTitle2: { en: "Breathe Life into Old Photos", bn: "পুরানো ছবিতে নতুন প্রাণ" },
+    carouselSubtitle2: { en: "Our AI Restoration brings faded memories back to vibrant life.", bn: "আমাদের এআই পুনরুদ্ধার বিবর্ণ স্মৃতিগুলিকে প্রাণবন্ত করে তোলে।" },
+    carouselCta2: { en: "Restore a Photo", bn: "ছবি পুনরুদ্ধার করুন" },
+    carouselTitle3: { en: "The Perfect Birthday Surprise", bn: "নিখুঁত জন্মদিনের সারপ্রাইজ" },
+    carouselSubtitle3: { en: "Custom mugs that make every sip special.", bn: "কাস্টম মগ যা প্রতিটি চুমুককে বিশেষ করে তোলে।" },
+    carouselCta3: { en: "Shop Mugs", bn: "মগ কিনুন" },
+    carouselTitle4: { en: "Gifts Straight from the Heart", bn: "হৃদয় থেকে সরাসরি উপহার" },
+    carouselSubtitle4: { en: "Find the perfect romantic gift for your loved one.", bn: "আপনার প্রিয়জনের জন্য নিখুঁত রোমান্টিক উপহার খুঁজুন।" },
+    carouselCta4: { en: "Discover Love Gifts", bn: "প্রেমের উপহার আবিষ্কার করুন" },
+
     // Categories
     birthdayGifts: { en: "Birthday Gifts", bn: "জন্মদিনের উপহার" },
     loveGifts: { en: "Love Gifts", bn: "প্রেমের উপহার" },
@@ -226,4 +296,14 @@ export const translations: Translations = {
     hideDetails: { en: "Hide Details", bn: "বিস্তারিত লুকান" },
     itemsInOrder: { en: "Items in this order", bn: "এই অর্ডারের আইটেম" },
     uploadImage: { en: "Upload Image", bn: "ছবি আপলোড করুন" },
+
+    // Reviews
+    reviews: { en: "Reviews", bn: "রিভিউ" },
+    writeReview: { en: "Write a Review", bn: "একটি রিভিউ লিখুন" },
+    yourRating: { en: "Your Rating", bn: "আপনার রেটিং" },
+    yourComment: { en: "Your Comment", bn: "আপনার মন্তব্য" },
+    submitReview: { en: "Submit Review", bn: "রিভিউ জমা দিন" },
+    submitting: { en: "Submitting...", bn: "জমা দেওয়া হচ্ছে..." },
+    noReviews: { en: "No reviews yet. Be the first to write one!", bn: "এখনো কোনো রিভিউ নেই। প্রথম রিভিউটি আপনিই লিখুন!" },
+    reviewThankYou: { en: "Thank you for your review!", bn: "আপনার রিভিউ এর জন্য ধন্যবাদ!" },
 };

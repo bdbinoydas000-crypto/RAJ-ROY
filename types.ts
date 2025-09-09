@@ -5,6 +5,15 @@ export interface ProductVariation {
     imageUrl: string;
 }
 
+export interface Review {
+    id: string;
+    productId: string;
+    userName: string;
+    rating: number;
+    comment: string;
+    date: string;
+}
+
 export interface Product {
     id: string;
     nameKey: string;
@@ -14,6 +23,8 @@ export interface Product {
     categoryKey: string;
     customizable: boolean;
     variations?: ProductVariation[];
+    averageRating?: number;
+    reviewCount?: number;
 }
 
 export interface CartItem {
@@ -49,6 +60,14 @@ export interface WishlistItem {
     customization: CustomizationState;
 }
 
+export interface CarouselSlide {
+    id: string;
+    imageUrl: string;
+    titleKey: string;
+    subtitleKey: string;
+    ctaKey: string;
+    ctaLink: string;
+}
 
 export type Language = 'en' | 'bn';
 
