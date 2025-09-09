@@ -1,22 +1,29 @@
+
 import React, { useState } from 'react';
 import { useCart } from '../context/CartContext';
 import { useLocalization } from '../context/LocalizationContext';
 import { useReward } from '../context/RewardContext';
 import OtpModal from '../components/OtpModal';
+import type { Order } from '../types';
 
 interface CheckoutPageProps {
     navigateTo: (page: 'home' | 'product' | 'confirmation') => void;
+    onOrderConfirmed: (order: Order) => void;
 }
 
-const CheckoutPage: React.FC<CheckoutPageProps> = ({ navigateTo }) => {
+const CheckoutPage: React.FC<CheckoutPageProps> = ({ navigateTo, onOrderConfirmed }) => {
     const { cartItems, clearCart } = useCart();
     const { t } = useLocalization();
     const { addPoints } = useReward();
 
     const [discountCode, setDiscountCode] = useState('');
     const [discountAmount, setDiscountAmount] = useState(0);
+    const [fullName, setFullName] = useState('');
     const [email, setEmail] = useState('');
     const [phone, setPhone] = useState('');
+    const [address, setAddress] = useState('');
+    const [city, setCity] = useState('');
+    const [pincode, setPincode] = useState('');
     const [showOtpModal, setShowOtpModal] = useState(false);
     const [generatedOtp, setGeneratedOtp] = useState('');
     const [selectedPayment, setSelectedPayment] = useState('creditDebitCard');
@@ -54,18 +61,36 @@ GiftScape Studio Team
     };
     
     const handleOrderConfirmation = () => {
-        const orderId = `GSS-${Math.floor(10000 + Math.random() * 90000)}`;
+        const newOrder: Order = {
+            id: `GSS-${Math.floor(10000 + Math.random() * 90000)}`,
+            date: new Date().toISOString(),
+            status: 'Processing',
+            items: cartItems,
+            subtotal: subtotal,
+            shipping: shipping,
+            discount: discountAmount,
+            total: total,
+            shippingAddress: {
+                fullName,
+                email,
+                phone,
+                address,
+                city,
+                pincode,
+            },
+        };
+
         const confirmationEmailContent = `
 --- Mock Email ---
 To: ${email}
 From: GiftScape Studio <orders@giftscape.studio>
-Subject: Your GiftScape Studio Order #${orderId} is Confirmed!
+Subject: Your GiftScape Studio Order #${newOrder.id} is Confirmed!
 
 Hello,
 
 Thank you for your purchase! Your order has been successfully placed.
 
-Order ID: ${orderId}
+Order ID: ${newOrder.id}
 Total Amount: ₹${total.toFixed(2)}
 
 We will notify you again once your order has shipped.
@@ -88,7 +113,7 @@ GiftScape Studio Team
         }
         setShowOtpModal(false);
         clearCart();
-        navigateTo('confirmation');
+        onOrderConfirmed(newOrder);
     };
 
     const handleApplyDiscount = () => {
@@ -111,13 +136,13 @@ GiftScape Studio Team
                         <div>
                             <h3 className="text-2xl font-serif mb-4">{t('shippingAddress')}</h3>
                             <div className="space-y-4">
-                                <input type="text" placeholder={t('fullName')} className="w-full bg-gray-700 p-3 rounded" required />
+                                <input type="text" placeholder={t('fullName')} value={fullName} onChange={e => setFullName(e.target.value)} className="w-full bg-gray-700 p-3 rounded" required />
                                 <input type="email" placeholder={t('email')} value={email} onChange={e => setEmail(e.target.value)} className="w-full bg-gray-700 p-3 rounded" required />
                                 <input type="tel" placeholder={t('whatsappNumber')} value={phone} onChange={e => setPhone(e.target.value)} className="w-full bg-gray-700 p-3 rounded" required />
-                                <input type="text" placeholder={t('address')} className="w-full bg-gray-700 p-3 rounded" required />
+                                <input type="text" placeholder={t('address')} value={address} onChange={e => setAddress(e.target.value)} className="w-full bg-gray-700 p-3 rounded" required />
                                 <div className="flex space-x-4">
-                                    <input type="text" placeholder={t('city')} className="w-full bg-gray-700 p-3 rounded" required />
-                                    <input type="text" placeholder={t('pincode')} className="w-full bg-gray-700 p-3 rounded" required />
+                                    <input type="text" placeholder={t('city')} value={city} onChange={e => setCity(e.target.value)} className="w-full bg-gray-700 p-3 rounded" required />
+                                    <input type="text" placeholder={t('pincode')} value={pincode} onChange={e => setPincode(e.target.value)} className="w-full bg-gray-700 p-3 rounded" required />
                                 </div>
                             </div>
                         </div>

@@ -1,5 +1,5 @@
 import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
-import type { Product, CustomizationState, ProductVariation, Review } from '../types';
+import type { Product, CustomizationState, ProductVariation, Review, FilterState } from '../types';
 import { useLocalization } from '../context/LocalizationContext';
 import { useCart } from '../context/CartContext';
 import { useWishlist } from '../context/WishlistContext';
@@ -175,6 +175,75 @@ const fileToBase64 = (file: File): Promise<string> => {
     });
 };
 
+const useDebounce = <T,>(value: T, delay: number): T => {
+    const [debouncedValue, setDebouncedValue] = useState<T>(value);
+    useEffect(() => {
+        const handler = setTimeout(() => {
+            setDebouncedValue(value);
+        }, delay);
+        return () => {
+            clearTimeout(handler);
+        };
+    }, [value, delay]);
+    return debouncedValue;
+};
+
+const applyVignette = (ctx: CanvasRenderingContext2D, width: number, height: number, intensity: number) => {
+    const outerRadius = Math.sqrt(width * width + height * height) / 2;
+    const gradient = ctx.createRadialGradient(width / 2, height / 2, outerRadius * (1 - intensity / 100), width / 2, height / 2, outerRadius);
+    gradient.addColorStop(0, 'rgba(0,0,0,0)');
+    gradient.addColorStop(1, `rgba(0,0,0,${Math.min(intensity / 100 * 0.8, 1)})`);
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, width, height);
+};
+
+const applySharpen = (ctx: CanvasRenderingContext2D, width: number, height: number, amount: number) => {
+    const imageData = ctx.getImageData(0, 0, width, height);
+    const { data } = imageData;
+    const outputData = new Uint8ClampedArray(data);
+
+    const centerWeight = 5 + (amount / 100) * 2;
+    const kernel = [0, -1, 0, -1, centerWeight, -1, 0, -1, 0];
+    const side = 3;
+    const halfSide = 1;
+
+    for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+            const dstOff = (y * width + x) * 4;
+            let r = 0, g = 0, b = 0;
+
+            for (let cy = 0; cy < side; cy++) {
+                for (let cx = 0; cx < side; cx++) {
+                    const scy = y + cy - halfSide;
+                    const scx = x + cx - halfSide;
+
+                    if (scy >= 0 && scy < height && scx >= 0 && scx < width) {
+                        const srcOff = (scy * width + scx) * 4;
+                        const wt = kernel[cy * side + cx];
+                        r += data[srcOff] * wt;
+                        g += data[srcOff + 1] * wt;
+                        b += data[srcOff + 2] * wt;
+                    }
+                }
+            }
+            outputData[dstOff] = r;
+            outputData[dstOff + 1] = g;
+            outputData[dstOff + 2] = b;
+        }
+    }
+    ctx.putImageData(new ImageData(outputData, width, height), 0, 0);
+};
+
+const initialFilterState: FilterState = {
+    brightness: 100,
+    contrast: 100,
+    sepia: 0,
+    grayscale: 0,
+    blur: 0,
+    vignette: 0,
+    sharpen: 0,
+};
+
 const ProductPage: React.FC<ProductPageProps> = ({ product, navigateTo, initialCustomization, isAuthenticated }) => {
     const { t } = useLocalization();
     const { addToCart } = useCart();
@@ -189,12 +258,7 @@ const ProductPage: React.FC<ProductPageProps> = ({ product, navigateTo, initialC
     const [isRestoring, setIsRestoring] = useState(false);
     const [isAdding, setIsAdding] = useState(false);
     const [selectedVariation, setSelectedVariation] = useState<ProductVariation | null>(null);
-    const [filters, setFilters] = useState({
-        brightness: 100,
-        contrast: 100,
-        sepia: 0,
-        grayscale: 0,
-    });
+    const [filters, setFilters] = useState<FilterState>(initialFilterState);
     const [isShareModalOpen, setIsShareModalOpen] = useState(false);
 
     // Review State
@@ -203,6 +267,11 @@ const ProductPage: React.FC<ProductPageProps> = ({ product, navigateTo, initialC
     const [newRating, setNewRating] = useState<number>(5);
     const [newComment, setNewComment] = useState<string>('');
     const [isSubmittingReview, setIsSubmittingReview] = useState<boolean>(false);
+    
+    // Advanced Filter state
+    const [isSharpening, setIsSharpening] = useState(false);
+    const [sharpenedImageCanvas, setSharpenedImageCanvas] = useState<HTMLCanvasElement | null>(null);
+    const debouncedSharpen = useDebounce(filters.sharpen, 400);
 
     useEffect(() => {
         setReviews(productReviews.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
@@ -242,32 +311,61 @@ const ProductPage: React.FC<ProductPageProps> = ({ product, navigateTo, initialC
             setText(initialCustomization.text);
             setFont(initialCustomization.font);
             setColor(initialCustomization.color);
-            setFilters(initialCustomization.filters);
+            setFilters({ ...initialFilterState, ...initialCustomization.filters });
         }
     }, [initialCustomization]);
-
-
+    
+    // Effect 1: Debounced sharpening (slow operation)
     useEffect(() => {
-        if (!originalImageSrc || !canvasRef.current) return;
+        if (!originalImageSrc) return;
 
+        setIsSharpening(true);
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.src = originalImageSrc;
+        
+        img.onload = () => {
+            const offscreenCanvas = document.createElement('canvas');
+            offscreenCanvas.width = img.naturalWidth;
+            offscreenCanvas.height = img.naturalHeight;
+            const offscreenCtx = offscreenCanvas.getContext('2d');
+            if (!offscreenCtx) {
+                setIsSharpening(false);
+                return;
+            };
+
+            offscreenCtx.drawImage(img, 0, 0);
+            if (debouncedSharpen > 0) {
+                applySharpen(offscreenCtx, offscreenCanvas.width, offscreenCanvas.height, debouncedSharpen);
+            }
+            setSharpenedImageCanvas(offscreenCanvas);
+            setIsSharpening(false);
+        };
+        img.onerror = () => setIsSharpening(false);
+
+    }, [originalImageSrc, debouncedSharpen]);
+
+    // Effect 2: Real-time filters (fast operations)
+    useEffect(() => {
+        if (!sharpenedImageCanvas || !canvasRef.current) return;
+        
         const canvas = canvasRef.current;
         const ctx = canvas.getContext('2d');
-        const img = new Image();
+        if (!ctx) return;
+        
+        canvas.width = sharpenedImageCanvas.width;
+        canvas.height = sharpenedImageCanvas.height;
 
-        img.onload = () => {
-            canvas.width = img.naturalWidth;
-            canvas.height = img.naturalHeight;
-            
-            if (ctx) {
-                const { brightness, contrast, sepia, grayscale } = filters;
-                ctx.filter = `brightness(${brightness}%) contrast(${contrast}%) sepia(${sepia}%) grayscale(${grayscale}%)`;
-                ctx.drawImage(img, 0, 0);
-            }
-        };
+        const { brightness, contrast, sepia, grayscale, blur, vignette } = filters;
+        ctx.filter = `brightness(${brightness}%) contrast(${contrast}%) sepia(${sepia}%) grayscale(${grayscale}%) blur(${blur}px)`;
+        
+        ctx.drawImage(sharpenedImageCanvas, 0, 0);
 
-        img.src = originalImageSrc; 
+        if (vignette > 0) {
+            applyVignette(ctx, canvas.width, canvas.height, vignette);
+        }
 
-    }, [filters, originalImageSrc]);
+    }, [filters, sharpenedImageCanvas]);
 
 
     const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -276,7 +374,7 @@ const ProductPage: React.FC<ProductPageProps> = ({ product, navigateTo, initialC
             const base64 = await fileToBase64(file);
             setOriginalImageSrc(base64);
             setImageMime(file.type);
-            setFilters({ brightness: 100, contrast: 100, sepia: 0, grayscale: 0 });
+            setFilters(initialFilterState);
         }
     };
     
@@ -287,7 +385,7 @@ const ProductPage: React.FC<ProductPageProps> = ({ product, navigateTo, initialC
             const base64Data = originalImageSrc.split(',')[1];
             const restoredBase64 = await restorePhotoWithAI(base64Data, imageMime);
             setOriginalImageSrc(`data:${imageMime};base64,${restoredBase64}`);
-            setFilters({ brightness: 100, contrast: 100, sepia: 0, grayscale: 0 });
+            setFilters(initialFilterState);
         } catch (error) {
             alert((error as Error).message);
         } finally {
@@ -387,10 +485,10 @@ const ProductPage: React.FC<ProductPageProps> = ({ product, navigateTo, initialC
                                     {text}
                                 </div>
                             )}
-                            {isRestoring && (
+                            {(isRestoring || isSharpening) && (
                                 <div className="absolute inset-0 bg-black/70 flex flex-col items-center justify-center">
                                 <div className="w-16 h-16 border-4 border-dashed rounded-full animate-spin border-purple-500"></div>
-                                <p className="mt-4 text-lg font-semibold">{t('restoring')}</p>
+                                <p className="mt-4 text-lg font-semibold">{isRestoring ? t('restoring') : 'Applying filter...'}</p>
                                 </div>
                             )}
                         </div>
@@ -430,7 +528,7 @@ const ProductPage: React.FC<ProductPageProps> = ({ product, navigateTo, initialC
                             <button onClick={() => setFilters({ ...filters, grayscale: 100, sepia: 0 })} className="bg-gray-700 py-2 rounded-lg text-sm hover:bg-gray-600 transition-colors">Grayscale</button>
                             <button onClick={() => setFilters({ ...filters, sepia: 100, grayscale: 0 })} className="bg-gray-700 py-2 rounded-lg text-sm hover:bg-gray-600 transition-colors">Sepia</button>
                             <button onClick={() => setFilters({ ...filters, grayscale: 0, sepia: 0 })} className="bg-gray-700 py-2 rounded-lg text-sm hover:bg-gray-600 transition-colors">Color</button>
-                            <button onClick={() => setFilters({ brightness: 100, contrast: 100, sepia: 0, grayscale: 0 })} className="bg-purple-600 py-2 rounded-lg text-sm font-bold hover:bg-purple-700 transition-colors">Reset All</button>
+                            <button onClick={() => setFilters(initialFilterState)} className="bg-purple-600 py-2 rounded-lg text-sm font-bold hover:bg-purple-700 transition-colors">Reset All</button>
                         </div>
                         <div className="space-y-4">
                             <div>
@@ -440,6 +538,18 @@ const ProductPage: React.FC<ProductPageProps> = ({ product, navigateTo, initialC
                             <div>
                                 <label className="block text-sm text-gray-400 mb-1">Contrast ({filters.contrast}%)</label>
                                 <input type="range" min="0" max="200" value={filters.contrast} onChange={(e) => setFilters({...filters, contrast: parseInt(e.target.value)})} className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-purple-500" />
+                            </div>
+                            <div>
+                                <label className="block text-sm text-gray-400 mb-1">Blur ({filters.blur}px)</label>
+                                <input type="range" min="0" max="20" step="1" value={filters.blur} onChange={(e) => setFilters({...filters, blur: parseInt(e.target.value)})} className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-purple-500" />
+                            </div>
+                            <div>
+                                <label className="block text-sm text-gray-400 mb-1">Vignette ({filters.vignette}%)</label>
+                                <input type="range" min="0" max="100" value={filters.vignette} onChange={(e) => setFilters({...filters, vignette: parseInt(e.target.value)})} className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-purple-500" />
+                            </div>
+                             <div>
+                                <label className="block text-sm text-gray-400 mb-1">Sharpen ({filters.sharpen}%)</label>
+                                <input type="range" min="0" max="100" value={filters.sharpen} onChange={(e) => setFilters({...filters, sharpen: parseInt(e.target.value)})} className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-purple-500" />
                             </div>
                         </div>
                     </div>

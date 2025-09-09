@@ -41,6 +41,9 @@ export const PRODUCTS: Product[] = [
     { id: 'p4', nameKey: 'birthdayMug', descriptionKey: 'birthdayMugDesc', price: 399, imageUrl: 'https://picsum.photos/seed/birthdaymug/600/600', categoryKey: 'birthdayGifts', customizable: true, ...calculateReviewStats('p4') },
     { id: 'p5', nameKey: 'loveCushion', descriptionKey: 'loveCushionDesc', price: 799, imageUrl: 'https://picsum.photos/seed/lovecushion/600/600', categoryKey: 'loveGifts', customizable: true, ...calculateReviewStats('p5') },
     { id: 'p6', nameKey: 'passportPhotos', descriptionKey: 'passportPhotosDesc', price: 199, imageUrl: 'https://picsum.photos/seed/passport/600/600', categoryKey: 'photoServices', customizable: false, ...calculateReviewStats('p6') },
+    { id: 'p7', nameKey: 'birthdayFrame', descriptionKey: 'birthdayFrameDesc', price: 799, imageUrl: 'https://picsum.photos/seed/bdayframe/600/600', categoryKey: 'birthdayGifts', customizable: true, ...calculateReviewStats('p7') },
+    { id: 'p8', nameKey: 'couplesTshirt', descriptionKey: 'couplesTshirtDesc', price: 999, imageUrl: 'https://picsum.photos/seed/coupleshirt/600/600', categoryKey: 'loveGifts', customizable: true, ...calculateReviewStats('p8') },
+    { id: 'p9', nameKey: 'starMap', descriptionKey: 'starMapDesc', price: 1499, imageUrl: 'https://picsum.photos/seed/starmap/600/600', categoryKey: 'anniversaryGifts', customizable: true, ...calculateReviewStats('p9') },
 ];
 
 export const CATEGORIES = {
@@ -71,7 +74,7 @@ export const CAROUSEL_SLIDES: CarouselSlide[] = [
     },
     {
         id: 'slide3',
-        imageUrl: 'https://picsum.photos/seed/carousel3/1200/600',
+        imageUrl: 'https://i.imgur.com/K2yY13D.jpeg',
         titleKey: 'carouselTitle3',
         subtitleKey: 'carouselSubtitle3',
         ctaKey: 'carouselCta3',
@@ -89,6 +92,22 @@ export const CAROUSEL_SLIDES: CarouselSlide[] = [
 
 // MOCK DATA FOR PROFILE PAGE
 export const MOCK_ORDERS: Order[] = [
+     {
+        id: '#GSS-91234',
+        date: '2024-07-28',
+        status: 'Shipped',
+        total: 399,
+        items: [
+             {
+                id: 'p4-default',
+                product: PRODUCTS.find(p => p.id === 'p4')!,
+                quantity: 1,
+                customization: { imageUrl: 'https://picsum.photos/seed/order4/200/200', text: 'Happy Birthday!' }
+            }
+        ],
+        trackingId: 'GSS789BLR',
+        shippingProvider: 'Blue Dart'
+    },
     {
         id: '#GSS-84632',
         date: '2023-10-26',
@@ -102,7 +121,9 @@ export const MOCK_ORDERS: Order[] = [
                 quantity: 1,
                 customization: { imageUrl: 'https://picsum.photos/seed/order1/200/200', text: 'Our Anniversary' }
             }
-        ]
+        ],
+        trackingId: 'GSS123DEL',
+        shippingProvider: 'Delhivery'
     },
     {
         id: '#GSS-75190',
@@ -121,7 +142,9 @@ export const MOCK_ORDERS: Order[] = [
                 product: PRODUCTS.find(p => p.id === 'p6')!,
                 quantity: 2
             }
-        ]
+        ],
+        trackingId: 'GSS456KOL',
+        shippingProvider: 'E-Kart'
     },
      {
         id: '#GSS-69341',
@@ -168,7 +191,8 @@ export const translations: Translations = {
     addToCart: { en: "Add to Cart", bn: "কার্টে যোগ করুন" },
     allRightsReserved: { en: "All Rights Reserved", bn: "সর্বস্বত্ব সংরক্ষিত" },
     searchPlaceholder: { en: "Search for products...", bn: "পণ্য খুঁজুন..." },
-    noResults: { en: "No products found for your search.", bn: "আপনার অনুসন্ধানের জন্য কোন পণ্য পাওয়া যায়নি।" },
+    noResults: { en: "No products found.", bn: "কোন পণ্য পাওয়া যায়নি।" },
+    trackOrder: { en: "Track Order", bn: "অর্ডার ট্র্যাক" },
     
     // Carousel
     carouselTitle1: { en: "New! Luminous Glow Frames", bn: "নতুন! উজ্জ্বল গ্লো ফ্রেম" },
@@ -205,6 +229,13 @@ export const translations: Translations = {
     loveCushionDesc: { en: "A cozy and romantic gift for your special someone.", bn: "আপনার বিশেষ কারো জন্য একটি আরামদায়ক এবং রোমান্টিক উপহার।" },
     passportPhotos: { en: "Passport Photo Set", bn: "পাসপোর্ট ছবির সেট" },
     passportPhotosDesc: { en: "Official standard passport photos, printed and delivered.", bn: "অফিসিয়াল স্ট্যান্ডার্ড পাসপোর্ট ছবি, প্রিন্ট এবং ডেলিভারি।" },
+    birthdayFrame: { en: "Birthday Celebration Frame", bn: "জন্মদিনের ফ্রেম" },
+    birthdayFrameDesc: { en: "A perfect frame to capture birthday memories.", bn: "জন্মদিনের স্মৃতি ধরে রাখার জন্য একটি নিখুঁত ফ্রেম।" },
+    couplesTshirt: { en: "Custom Couples T-Shirt", bn: "কাস্টম কাপল টি-শার্ট" },
+    couplesTshirtDesc: { en: "Wear your love with these matching t-shirts.", bn: "এই ম্যাচিং টি-শার্টের সাথে আপনার ভালবাসা প্রকাশ করুন।" },
+    starMap: { en: "Custom Star Map Frame", bn: "কাস্টম স্টার ম্যাপ ফ্রেম" },
+    starMapDesc: { en: "A map of the stars on your special night.", bn: "আপনার বিশেষ রাতের আকাশের তারার একটি মানচিত্র।" },
+
 
     // Variations
     glowFrameSmall: { en: "Small (8x10)", bn: "ছোট (৮x১০)" },
@@ -257,6 +288,7 @@ export const translations: Translations = {
     
     // Confirmation
     orderConfirmed: { en: "Order Confirmed!", bn: "অর্ডার নিশ্চিত হয়েছে!" },
+    greetingPersonalized: { en: "Hi, {name}!", bn: "হাই, {name}!"},
     thankYou: { en: "Thank you for your purchase.", bn: "আপনার কেনার জন্য ধন্যবাদ।" },
     backToHome: { en: "Back to Home", bn: "হোমে ফিরে যান" },
 
@@ -296,14 +328,13 @@ export const translations: Translations = {
     hideDetails: { en: "Hide Details", bn: "বিস্তারিত লুকান" },
     itemsInOrder: { en: "Items in this order", bn: "এই অর্ডারের আইটেম" },
     uploadImage: { en: "Upload Image", bn: "ছবি আপলোড করুন" },
+    trackingInfo: { en: "Tracking Information", bn: "ট্র্যাকিং তথ্য"},
 
-    // Reviews
-    reviews: { en: "Reviews", bn: "রিভিউ" },
-    writeReview: { en: "Write a Review", bn: "একটি রিভিউ লিখুন" },
-    yourRating: { en: "Your Rating", bn: "আপনার রেটিং" },
-    yourComment: { en: "Your Comment", bn: "আপনার মন্তব্য" },
-    submitReview: { en: "Submit Review", bn: "রিভিউ জমা দিন" },
-    submitting: { en: "Submitting...", bn: "জমা দেওয়া হচ্ছে..." },
-    noReviews: { en: "No reviews yet. Be the first to write one!", bn: "এখনো কোনো রিভিউ নেই। প্রথম রিভিউটি আপনিই লিখুন!" },
-    reviewThankYou: { en: "Thank you for your review!", bn: "আপনার রিভিউ এর জন্য ধন্যবাদ!" },
+    // Filter & Sort
+    all: { en: "All", bn: "সব" },
+    relevance: { en: "Relevance", bn: "প্রাসঙ্গিকতা" },
+    priceAsc: { en: "Price: Low to High", bn: "দাম: কম থেকে বেশি" },
+    priceDesc: { en: "Price: High to Low", bn: "দাম: বেশি থেকে কম" },
+    ratingDesc: { en: "Rating: High to Low", bn: "রেটিং: বেশি থেকে কম" },
+    sortBy: { en: "Sort by:", bn: "সাজান:"},
 };

@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback, useEffect } from 'react';
 import { CartProvider } from './context/CartContext';
 import { LocalizationProvider } from './context/LocalizationContext';
@@ -11,7 +12,7 @@ import ProfilePage from './pages/ProfilePage';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import AuthModal from './components/AuthModal';
-import type { Product, WishlistItem, CustomizationState } from './types';
+import type { Product, WishlistItem, CustomizationState, Order } from './types';
 
 export type Page = 'home' | 'product' | 'checkout' | 'confirmation' | 'profile';
 
@@ -22,6 +23,7 @@ const App: React.FC = () => {
     const [isAuthModalOpen, setAuthModalOpen] = useState(false);
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
+    const [lastOrder, setLastOrder] = useState<Order | null>(null);
 
     useEffect(() => {
         const token = localStorage.getItem('authToken');
@@ -74,20 +76,25 @@ const App: React.FC = () => {
         setSearchQuery('');
         navigateTo('home');
     };
+
+    const handleOrderConfirmed = (order: Order) => {
+        setLastOrder(order);
+        navigateTo('confirmation');
+    };
     
     const renderPage = () => {
         switch (currentPage) {
             case 'product':
-                return selectedProduct ? <ProductPage product={selectedProduct} navigateTo={navigateTo} initialCustomization={initialCustomization} isAuthenticated={isAuthenticated} /> : <HomePage onProductSelect={handleProductSelect} searchQuery={searchQuery} />;
+                return selectedProduct ? <ProductPage product={selectedProduct} navigateTo={navigateTo} initialCustomization={initialCustomization} isAuthenticated={isAuthenticated} /> : <HomePage onProductSelect={handleProductSelect} searchQuery={searchQuery} navigateTo={navigateTo} />;
             case 'checkout':
-                return <CheckoutPage navigateTo={navigateTo} />;
+                return <CheckoutPage navigateTo={navigateTo} onOrderConfirmed={handleOrderConfirmed} />;
             case 'confirmation':
-                return <ConfirmationPage navigateTo={navigateTo} />;
+                return <ConfirmationPage navigateTo={navigateTo} order={lastOrder} />;
             case 'profile':
                 return <ProfilePage />;
             case 'home':
             default:
-                return <HomePage onProductSelect={handleProductSelect} searchQuery={searchQuery} />;
+                return <HomePage onProductSelect={handleProductSelect} searchQuery={searchQuery} navigateTo={navigateTo} />;
         }
     };
 
@@ -96,7 +103,7 @@ const App: React.FC = () => {
             <CartProvider>
                 <WishlistProvider>
                     <RewardProvider>
-                        <div className="flex flex-col min-h-screen bg-gray-900 text-gray-200 font-sans">
+                        <div className="flex flex-col min-h-screen bg-gray-900 text-gray-300 font-sans">
                             <Header 
                                 onAuthClick={() => setAuthModalOpen(true)} 
                                 navigateTo={navigateTo}

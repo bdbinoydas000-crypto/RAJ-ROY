@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useLocalization } from '../context/LocalizationContext';
 import PolicyModal from './PolicyModal';
@@ -27,8 +26,8 @@ const Footer: React.FC = () => {
     };
     
     return (
-        <footer className="bg-gray-900 border-t border-gray-800 mt-12">
-            <div className="container mx-auto px-4 py-6 text-center text-gray-500">
+        <footer className="bg-gray-800 border-t border-gray-700 mt-12">
+            <div className="container mx-auto px-4 py-6 text-center text-gray-400">
                 <div className="flex justify-center space-x-6 mb-4">
                     <button onClick={() => showPolicy('terms')} className="hover:text-purple-400 transition-colors">Terms & Conditions</button>
                     <button onClick={() => showPolicy('cancellation')} className="hover:text-purple-400 transition-colors">Cancellation Policy</button>

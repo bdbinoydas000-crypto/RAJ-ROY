@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import type { CarouselSlide } from '../types';
 import { useLocalization } from '../context/LocalizationContext';
@@ -11,7 +12,8 @@ const Carousel: React.FC<CarouselProps> = ({ slides, autoPlayInterval = 5000 }) 
     const { t } = useLocalization();
     const [currentIndex, setCurrentIndex] = useState(0);
     const [isPaused, setIsPaused] = useState(false);
-    const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+    // FIX: Replace NodeJS.Timeout with ReturnType<typeof setTimeout> for browser compatibility.
+    const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const progressRef = useRef<HTMLDivElement>(null);
 
     const resetTimeout = useCallback(() => {

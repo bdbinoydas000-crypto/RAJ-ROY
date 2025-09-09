@@ -2,7 +2,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useWishlist } from '../context/WishlistContext';
 import { useLocalization } from '../context/LocalizationContext';
-import type { WishlistItem } from '../types';
+import type { WishlistItem, FilterState } from '../types';
 
 interface WishlistViewProps {
     onClose: () => void;
@@ -27,8 +27,12 @@ const WishlistItemCard: React.FC<{ item: WishlistItem, onLoad: () => void, onRem
             canvas.height = img.naturalHeight;
             
             if (ctx) {
-                const { filters } = customization;
-                ctx.filter = `brightness(${filters.brightness}%) contrast(${filters.contrast}%) sepia(${filters.sepia}%) grayscale(${filters.grayscale}%)`;
+                const filters = {
+                    blur: 0,
+                    ...customization.filters
+                } as FilterState;
+
+                ctx.filter = `brightness(${filters.brightness}%) contrast(${filters.contrast}%) sepia(${filters.sepia}%) grayscale(${filters.grayscale}%) blur(${filters.blur}px)`;
                 ctx.drawImage(img, 0, 0);
             }
         };

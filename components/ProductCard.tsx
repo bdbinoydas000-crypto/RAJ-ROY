@@ -1,4 +1,3 @@
-
 import React from 'react';
 import type { Product } from '../types';
 import { useLocalization } from '../context/LocalizationContext';
@@ -13,7 +12,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onSelect }) => {
     const { t } = useLocalization();
     
     return (
-        <div className="bg-gray-800 rounded-lg overflow-hidden shadow-lg hover:shadow-purple-500/30 transition-shadow duration-300 group animate-fade-in-up flex flex-col">
+        <div className="bg-gray-800 rounded-lg overflow-hidden shadow-lg hover:shadow-purple-500/20 transition-all duration-300 group animate-fade-in-up flex flex-col">
             <div className="relative">
                 <img src={product.imageUrl} alt={t(product.nameKey)} className="w-full h-64 object-cover group-hover:scale-105 transition-transform duration-500" />
                 <div className="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-all"></div>
@@ -25,7 +24,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onSelect }) => {
                 {product.reviewCount && product.reviewCount > 0 ? (
                     <div className="flex items-center gap-2 mb-3">
                         <StarRating rating={product.averageRating || 0} />
-                        <span className="text-xs text-gray-400">({product.reviewCount})</span>
+                        <span className="text-xs text-gray-500">({product.reviewCount})</span>
                     </div>
                 ) : (
                      <div className="h-[28px] mb-3"></div>

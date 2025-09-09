@@ -1,3 +1,4 @@
+
 export interface ProductVariation {
     id: string;
     nameKey: string;
@@ -15,7 +16,7 @@ export interface Review {
 }
 
 export interface Product {
-    id: string;
+    id:string;
     nameKey: string;
     descriptionKey: string;
     price: number;
@@ -43,6 +44,9 @@ export interface FilterState {
     contrast: number;
     sepia: number;
     grayscale: number;
+    blur: number;
+    vignette: number;
+    sharpen: number;
 }
 
 export interface CustomizationState {
@@ -91,10 +95,27 @@ export interface Address {
     isDefault: boolean;
 }
 
+export type OrderStatus = 'Delivered' | 'Processing' | 'Cancelled' | 'Shipped' | 'Out for Delivery';
+
+export interface ShippingInfo {
+    fullName: string;
+    email: string;
+    phone: string;
+    address: string;
+    city: string;
+    pincode: string;
+}
+
 export interface Order {
     id: string;
     date: string;
-    status: 'Delivered' | 'Processing' | 'Cancelled';
+    status: OrderStatus;
     total: number;
     items: CartItem[];
+    subtotal?: number;
+    shipping?: number;
+    discount?: number;
+    trackingId?: string;
+    shippingProvider?: string;
+    shippingAddress?: ShippingInfo;
 }
