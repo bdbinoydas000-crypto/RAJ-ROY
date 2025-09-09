@@ -1,15 +1,54 @@
-import React from 'react';
+
+import React, { useState, useEffect } from 'react';
 import type { Product } from '../types';
 import { useLocalization } from '../context/LocalizationContext';
 import StarRating from './StarRating';
+import { generateProductDescription } from '../services/geminiService';
 
 interface ProductCardProps {
     product: Product;
     onSelect: (product: Product) => void;
 }
 
+const DescriptionPlaceholder: React.FC = () => (
+    <div className="space-y-2 pt-1">
+        <div className="h-3 bg-gray-700 rounded w-full animate-pulse"></div>
+        <div className="h-3 bg-gray-700 rounded w-5/6 animate-pulse"></div>
+    </div>
+);
+
 const ProductCard: React.FC<ProductCardProps> = ({ product, onSelect }) => {
     const { t } = useLocalization();
+    const initialDescription = t(product.descriptionKey);
+    const [description, setDescription] = useState(initialDescription);
+    const [isLoading, setIsLoading] = useState(true);
+
+    useEffect(() => {
+        let isMounted = true;
+        setIsLoading(true);
+        
+        generateProductDescription(t(product.nameKey), t(product.descriptionKey))
+            .then(aiDescription => {
+                if (isMounted) {
+                    setDescription(aiDescription);
+                }
+            })
+            .catch(error => {
+                console.error(error);
+                if (isMounted) {
+                    setDescription(initialDescription);
+                }
+            })
+            .finally(() => {
+                if (isMounted) {
+                    setIsLoading(false);
+                }
+            });
+
+        return () => {
+            isMounted = false;
+        };
+    }, [product.id, initialDescription, product.nameKey, product.descriptionKey, t]);
     
     return (
         <div className="bg-gray-800 rounded-lg overflow-hidden shadow-lg hover:shadow-purple-500/20 transition-all duration-300 group animate-fade-in-up flex flex-col">
@@ -19,7 +58,9 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onSelect }) => {
             </div>
             <div className="p-4 flex flex-col flex-grow">
                 <h3 className="text-lg font-serif font-bold text-white">{t(product.nameKey)}</h3>
-                <p className="text-gray-400 text-sm mt-1 mb-2 flex-grow">{t(product.descriptionKey)}</p>
+                <div className="text-gray-400 text-sm mt-1 mb-2 flex-grow min-h-[40px]">
+                    {isLoading ? <DescriptionPlaceholder /> : description}
+                </div>
                 
                 {product.reviewCount && product.reviewCount > 0 ? (
                     <div className="flex items-center gap-2 mb-3">

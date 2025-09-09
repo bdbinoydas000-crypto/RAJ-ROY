@@ -244,6 +244,8 @@ const initialFilterState: FilterState = {
     sharpen: 0,
 };
 
+type CustomizationTab = 'setup' | 'customize' | 'details';
+
 const ProductPage: React.FC<ProductPageProps> = ({ product, navigateTo, initialCustomization, isAuthenticated }) => {
     const { t } = useLocalization();
     const { addToCart } = useCart();
@@ -257,9 +259,19 @@ const ProductPage: React.FC<ProductPageProps> = ({ product, navigateTo, initialC
     const [color, setColor] = useState('#FFFFFF');
     const [isRestoring, setIsRestoring] = useState(false);
     const [isAdding, setIsAdding] = useState(false);
+    const [isSaving, setIsSaving] = useState(false);
     const [selectedVariation, setSelectedVariation] = useState<ProductVariation | null>(null);
     const [filters, setFilters] = useState<FilterState>(initialFilterState);
     const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+    const [photoSize, setPhotoSize] = useState('8x10"');
+    const [customWidth, setCustomWidth] = useState('');
+    const [customHeight, setCustomHeight] = useState('');
+    const [mind, setMind] = useState('');
+    const [instruction, setInstruction] = useState('');
+    const [isFiltersExpanded, setIsFiltersExpanded] = useState(false);
+    const [activeTab, setActiveTab] = useState<CustomizationTab>('setup');
+    const [aspectRatio, setAspectRatio] = useState('1/1');
+    const [currentPrice, setCurrentPrice] = useState<number>(product.price);
 
     // Review State
     const productReviews = useMemo(() => MOCK_REVIEWS.filter(r => r.productId === product.id), [product.id]);
@@ -288,21 +300,89 @@ const ProductPage: React.FC<ProductPageProps> = ({ product, navigateTo, initialC
         }
     }, [product]);
 
-    const getCurrentCustomizationState = (): CustomizationState | null => {
-        if (!originalImageSrc) return null;
-        return { originalImageSrc, imageMime, text, font, color, filters };
-    }
-
-    const [isSaved, setIsSaved] = useState(false);
-
+    // Effect to calculate and update price based on selections
     useEffect(() => {
-        const currentState = getCurrentCustomizationState();
-        if (currentState) {
-            setIsSaved(isItemInWishlist(product, currentState));
-        } else {
-            setIsSaved(false);
+        let newPrice = product.price;
+    
+        if (selectedVariation) {
+            // Price is determined by the selected frame variation
+            newPrice = selectedVariation.price;
+        } else if (product.customizable && product.pricePerSquareInch) {
+            // Price is calculated by area for prints
+            let width = 0;
+            let height = 0;
+            const defaultArea = 8 * 10; // Default size e.g., 8x10 for price calculation
+    
+            if (photoSize === 'custom') {
+                width = parseFloat(customWidth);
+                height = parseFloat(customHeight);
+            } else if (photoSize.includes('x')) {
+                const dims = photoSize.replace('"', '').split('x').map(Number);
+                width = dims[0];
+                height = dims[1];
+            }
+    
+            if (width > 0 && height > 0) {
+                newPrice = width * height * product.pricePerSquareInch;
+            } else {
+                // Fallback to a default size price if no valid size is selected yet
+                newPrice = defaultArea * product.pricePerSquareInch;
+            }
         }
-    }, [originalImageSrc, imageMime, text, font, color, filters, product, isItemInWishlist]);
+        
+        setCurrentPrice(Math.round(newPrice));
+    }, [selectedVariation, product, photoSize, customWidth, customHeight]);
+
+    // Effect to update aspect ratio based on selected size
+    useEffect(() => {
+        let newAspectRatio = '1/1';
+
+        // Priority 1: Frame variation size
+        if (selectedVariation?.width && selectedVariation?.height) {
+            newAspectRatio = `${selectedVariation.width}/${selectedVariation.height}`;
+        } 
+        // Priority 2: Print size (if no variations exist)
+        else {
+            if (photoSize !== 'custom' && photoSize.includes('x')) {
+                const [w, h] = photoSize.replace('"', '').split('x').map(Number);
+                if (!isNaN(w) && w > 0 && !isNaN(h) && h > 0) {
+                    newAspectRatio = `${w}/${h}`;
+                }
+            } else if (photoSize === 'custom' && customWidth && customHeight) {
+                const w = parseFloat(customWidth);
+                const h = parseFloat(customHeight);
+                if (!isNaN(w) && w > 0 && !isNaN(h) && h > 0) {
+                    newAspectRatio = `${w}/${h}`;
+                }
+            }
+        }
+        setAspectRatio(newAspectRatio);
+    }, [selectedVariation, photoSize, customWidth, customHeight]);
+
+    const getCurrentCustomizationState = useCallback((): CustomizationState | null => {
+        if (!originalImageSrc) return null;
+        return { 
+            originalImageSrc, 
+            imageMime, 
+            text, 
+            font, 
+            color, 
+            filters,
+            photoSize,
+            customWidth: photoSize === 'custom' ? parseFloat(customWidth) : undefined,
+            customHeight: photoSize === 'custom' ? parseFloat(customHeight) : undefined,
+            mind,
+            instruction,
+        };
+    }, [originalImageSrc, imageMime, text, font, color, filters, photoSize, customWidth, customHeight, mind, instruction]);
+
+
+    const currentState = getCurrentCustomizationState();
+    const isSaved = useMemo(() => {
+        if (!currentState) return false;
+        return isItemInWishlist(product, currentState);
+    }, [currentState, product, isItemInWishlist]);
+
 
      useEffect(() => {
         if (initialCustomization) {
@@ -312,6 +392,12 @@ const ProductPage: React.FC<ProductPageProps> = ({ product, navigateTo, initialC
             setFont(initialCustomization.font);
             setColor(initialCustomization.color);
             setFilters({ ...initialFilterState, ...initialCustomization.filters });
+            setPhotoSize(initialCustomization.photoSize || '8x10"');
+            setCustomWidth(initialCustomization.customWidth ? String(initialCustomization.customWidth) : '');
+            setCustomHeight(initialCustomization.customHeight ? String(initialCustomization.customHeight) : '');
+            setMind(initialCustomization.mind || '');
+            setInstruction(initialCustomization.instruction || '');
+            setActiveTab('customize');
         }
     }, [initialCustomization]);
     
@@ -375,6 +461,7 @@ const ProductPage: React.FC<ProductPageProps> = ({ product, navigateTo, initialC
             setOriginalImageSrc(base64);
             setImageMime(file.type);
             setFilters(initialFilterState);
+            setActiveTab('customize');
         }
     };
     
@@ -401,15 +488,31 @@ const ProductPage: React.FC<ProductPageProps> = ({ product, navigateTo, initialC
         setIsAdding(true);
         setTimeout(() => {
             const finalImageUrl = canvasRef.current ? canvasRef.current.toDataURL(imageMime) : (selectedVariation?.imageUrl || product.imageUrl);
-            addToCart(product, 1, { imageUrl: finalImageUrl, text }, selectedVariation || undefined);
+            const customizationDetails = getCurrentCustomizationState();
+            
+            addToCart(
+                product, 
+                1, 
+                { 
+                    ...(customizationDetails || { text }),
+                    imageUrl: finalImageUrl,
+                }, 
+                selectedVariation || undefined
+            );
+
             navigateTo('checkout');
         }, 1200);
     };
 
     const handleSaveToWishlist = () => {
-        const currentState = getCurrentCustomizationState();
         if (currentState) {
-            addToWishlist(product, currentState);
+            if (isSaved) return;
+            
+            setIsSaving(true);
+            setTimeout(() => {
+                addToWishlist(product, currentState);
+                setIsSaving(false);
+            }, 500);
         } else {
             alert("Please upload an image before saving.");
         }
@@ -468,11 +571,31 @@ const ProductPage: React.FC<ProductPageProps> = ({ product, navigateTo, initialC
     }, [isAuthenticated, addPoints]);
 
 
+    const getSaveButtonText = () => {
+        if (isSaving) return "Saving...";
+        if (isSaved) return t('saved');
+        return t('saveToWishlist');
+    };
+
+    const tabButtonStyle = (tabName: CustomizationTab, disabled: boolean = false) => {
+        const baseStyle = "flex-1 py-3 px-2 text-center font-semibold border-b-2 transition-colors duration-300 focus:outline-none";
+        if (disabled) {
+            return `${baseStyle} border-transparent text-gray-600 cursor-not-allowed`;
+        }
+        if (activeTab === tabName) {
+            return `${baseStyle} border-purple-500 text-white`;
+        }
+        return `${baseStyle} border-transparent text-gray-400 hover:text-gray-200 hover:border-gray-500`;
+    };
+
     return (
         <>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 animate-fade-in-up">
                 {/* Customizer Preview */}
-                <div className="bg-gray-800 p-4 rounded-lg flex flex-col items-center justify-center aspect-square shadow-inner">
+                <div 
+                    className="bg-gray-800 p-4 rounded-lg flex flex-col items-center justify-center shadow-inner lg:sticky top-24 transition-all duration-300 ease-in-out"
+                    style={{ aspectRatio }}
+                >
                     {!originalImageSrc ? (
                         <div className="w-full h-full flex items-center justify-center">
                             <img src={selectedVariation?.imageUrl || product.imageUrl} alt={t(product.nameKey)} className="max-w-full max-h-full object-contain rounded-md" />
@@ -507,92 +630,119 @@ const ProductPage: React.FC<ProductPageProps> = ({ product, navigateTo, initialC
                                 </span>
                             </div>
                         )}
+                        <p className="text-4xl font-bold text-purple-400 mt-4">
+                            ₹{currentPrice}
+                        </p>
                     </div>
                     
-                    <div className="bg-gray-800 p-6 rounded-lg">
-                        <h3 className="text-xl font-bold mb-4">1. {t('uploadPhoto')}</h3>
-                        <input type="file" accept="image/*" ref={fileInputRef} onChange={handleFileChange} className="hidden" />
-                        <button onClick={() => fileInputRef.current?.click()} className="w-full bg-purple-600 py-3 rounded-lg font-bold hover:bg-purple-700 transition-colors">
-                            {originalImageSrc ? t('changePhoto') : t('uploadPhoto')}
-                        </button>
-                        {product.id === 'p2' && originalImageSrc && (
-                            <button onClick={handleRestoreClick} disabled={isRestoring} className="w-full mt-3 bg-teal-500 py-3 rounded-lg font-bold hover:bg-teal-600 transition-colors disabled:bg-gray-500">
-                                {isRestoring ? t('restoring') : t('restoreWithAI')}
-                            </button>
-                        )}
+                    <div className="bg-gray-800 rounded-lg">
+                        <div className="flex border-b border-gray-700">
+                             <button className={tabButtonStyle('setup')} onClick={() => setActiveTab('setup')}>Setup</button>
+                             <button className={tabButtonStyle('customize', !originalImageSrc)} onClick={() => setActiveTab('customize')} disabled={!originalImageSrc}>Customize</button>
+                             <button className={tabButtonStyle('details', !originalImageSrc)} onClick={() => setActiveTab('details')} disabled={!originalImageSrc}>Details</button>
+                        </div>
+                        <div className="p-6">
+                            {activeTab === 'setup' && (
+                                <div className="animate-fade-in space-y-6">
+                                    <div>
+                                        <h3 className="text-xl font-bold mb-4">{t('uploadPhoto')}</h3>
+                                        <input type="file" accept="image/*" ref={fileInputRef} onChange={handleFileChange} className="hidden" />
+                                        <button onClick={() => fileInputRef.current?.click()} className="w-full bg-purple-600 py-3 rounded-lg font-bold hover:bg-purple-700 transition-colors">
+                                            {originalImageSrc ? t('changePhoto') : t('uploadPhoto')}
+                                        </button>
+                                        {product.id === 'p2' && originalImageSrc && (
+                                            <button onClick={handleRestoreClick} disabled={isRestoring} className="w-full mt-3 bg-teal-500 py-3 rounded-lg font-bold hover:bg-teal-600 transition-colors disabled:bg-gray-500">
+                                                {isRestoring ? t('restoring') : t('restoreWithAI')}
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+                            {activeTab === 'customize' && (
+                                <div className="animate-fade-in space-y-6">
+                                    <div className="bg-gray-900/50 rounded-lg overflow-hidden border border-gray-700">
+                                        <button
+                                            onClick={() => setIsFiltersExpanded(!isFiltersExpanded)}
+                                            className="w-full flex justify-between items-center text-left p-4 hover:bg-gray-700/50 transition-colors"
+                                            aria-expanded={isFiltersExpanded}
+                                            aria-controls="filter-panel"
+                                        >
+                                            <h3 className="text-lg font-bold">Apply Filters</h3>
+                                            <svg xmlns="http://www.w3.org/2000/svg" className={`h-6 w-6 transition-transform duration-300 ${isFiltersExpanded ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                            </svg>
+                                        </button>
+                                        <div id="filter-panel" className={`transition-all duration-500 ease-in-out overflow-hidden ${isFiltersExpanded ? 'max-h-[500px]' : 'max-h-0'}`}>
+                                            <div className="p-4 pt-2">
+                                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
+                                                    <button onClick={() => setFilters({ ...filters, grayscale: 100, sepia: 0 })} className="bg-gray-700 py-2 rounded-lg text-sm hover:bg-gray-600 transition-colors">Grayscale</button>
+                                                    <button onClick={() => setFilters({ ...filters, sepia: 100, grayscale: 0 })} className="bg-gray-700 py-2 rounded-lg text-sm hover:bg-gray-600 transition-colors">Sepia</button>
+                                                    <button onClick={() => setFilters({ ...filters, grayscale: 0, sepia: 0 })} className="bg-gray-700 py-2 rounded-lg text-sm hover:bg-gray-600 transition-colors">Color</button>
+                                                    <button onClick={() => setFilters(initialFilterState)} className="bg-purple-600 py-2 rounded-lg text-sm font-bold hover:bg-purple-700 transition-colors">Reset All</button>
+                                                </div>
+                                                <div className="space-y-4">
+                                                    <div><label className="block text-sm text-gray-400 mb-1">Brightness ({filters.brightness}%)</label><input type="range" min="0" max="200" value={filters.brightness} onChange={(e) => setFilters({...filters, brightness: parseInt(e.target.value)})} className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-purple-500" /></div>
+                                                    <div><label className="block text-sm text-gray-400 mb-1">Contrast ({filters.contrast}%)</label><input type="range" min="0" max="200" value={filters.contrast} onChange={(e) => setFilters({...filters, contrast: parseInt(e.target.value)})} className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-purple-500" /></div>
+                                                    <div><label className="block text-sm text-gray-400 mb-1">Blur ({filters.blur}px)</label><input type="range" min="0" max="20" step="1" value={filters.blur} onChange={(e) => setFilters({...filters, blur: parseInt(e.target.value)})} className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-purple-500" /></div>
+                                                    <div><label className="block text-sm text-gray-400 mb-1">Vignette ({filters.vignette}%)</label><input type="range" min="0" max="100" value={filters.vignette} onChange={(e) => setFilters({...filters, vignette: parseInt(e.target.value)})} className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-purple-500" /></div>
+                                                    <div><label className="block text-sm text-gray-400 mb-1">Sharpen ({filters.sharpen}%)</label><input type="range" min="0" max="100" value={filters.sharpen} onChange={(e) => setFilters({...filters, sharpen: parseInt(e.target.value)})} className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-purple-500" /></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <h3 className="text-lg font-bold mb-4">{t('addText')}</h3>
+                                        <input type="text" value={text} onChange={(e) => setText(e.target.value)} placeholder={t('enterText')} className="w-full bg-gray-700 p-2 rounded mb-4" />
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div><label className="block text-sm text-gray-400 mb-1">{t('fontStyle')}</label><select value={font} onChange={(e) => setFont(e.target.value)} className="w-full bg-gray-700 p-2 rounded"><option value="serif">Playfair Display</option><option value="sans-serif">Roboto</option><option value="monospace">Monospace</option></select></div>
+                                            <div><label className="block text-sm text-gray-400 mb-1">{t('textColor')}</label><input type="color" value={color} onChange={(e) => setColor(e.target.value)} className="w-full h-10 bg-gray-700 p-1 rounded" /></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                            {activeTab === 'details' && (
+                                <div className="animate-fade-in space-y-6">
+                                    <div>
+                                        <h3 className="text-lg font-bold mb-4">{t('customizeSize')}</h3>
+                                        {product.variations && product.variations.length > 0 ? (
+                                            <div className="flex flex-wrap gap-3">
+                                                {product.variations.map(variation => (
+                                                    <button 
+                                                        key={variation.id} 
+                                                        onClick={() => setSelectedVariation(variation)} 
+                                                        className={`px-4 py-2 rounded-lg font-semibold transition-all border-2 ${ selectedVariation?.id === variation.id ? 'bg-purple-600 border-purple-400 text-white' : 'bg-gray-700 border-gray-600 hover:bg-gray-600 hover:border-gray-500' }`}
+                                                    >
+                                                        {t(variation.nameKey)}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            <>
+                                                <div className="flex flex-wrap gap-3">
+                                                    {['4x6"', '5x7"', '8x10"', '12x18"', '16x20"', 'custom'].map(size => (
+                                                        <button key={size} onClick={() => setPhotoSize(size)} className={`px-4 py-2 rounded-lg font-semibold transition-all border-2 ${ photoSize === size ? 'bg-purple-600 border-purple-400 text-white' : 'bg-gray-700 border-gray-600 hover:bg-gray-600 hover:border-gray-500' }`}>{size === 'custom' ? t('customSize') : size}</button>
+                                                    ))}
+                                                </div>
+                                                {photoSize === 'custom' && (
+                                                    <div className="grid grid-cols-2 gap-4 mt-4 animate-fade-in">
+                                                        <div><label className="block text-sm text-gray-400 mb-1">{t('width')}</label><div className="relative"><input type="number" value={customWidth} onChange={(e) => setCustomWidth(e.target.value)} placeholder="e.g., 10" className="w-full bg-gray-700 p-2 rounded pr-14" /><span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">{t('inches')}</span></div></div>
+                                                        <div><label className="block text-sm text-gray-400 mb-1">{t('height')}</label><div className="relative"><input type="number" value={customHeight} onChange={(e) => setCustomHeight(e.target.value)} placeholder="e.g., 12" className="w-full bg-gray-700 p-2 rounded pr-14" /><span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">{t('inches')}</span></div></div>
+                                                    </div>
+                                                )}
+                                            </>
+                                        )}
+                                    </div>
+                                    <div>
+                                        <h3 className="text-lg font-bold mb-4">{t('creativeBrief')}</h3>
+                                        <div className="space-y-4">
+                                            <div><label className="block text-sm text-gray-400 mb-1">{t('whatsOnYourMind')}</label><textarea value={mind} onChange={(e) => setMind(e.target.value)} placeholder={t('mindPlaceholder')} rows={3} className="w-full bg-gray-700 p-2 rounded" /></div>
+                                            <div><label className="block text-sm text-gray-400 mb-1">{t('instruction')}</label><textarea value={instruction} onChange={(e) => setInstruction(e.target.value)} placeholder={t('instructionPlaceholder')} rows={3} className="w-full bg-gray-700 p-2 rounded" /></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
                     </div>
-
-                    <div className="bg-gray-800 p-6 rounded-lg">
-                        <h3 className="text-xl font-bold mb-4">2. Apply Filters</h3>
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
-                            <button onClick={() => setFilters({ ...filters, grayscale: 100, sepia: 0 })} className="bg-gray-700 py-2 rounded-lg text-sm hover:bg-gray-600 transition-colors">Grayscale</button>
-                            <button onClick={() => setFilters({ ...filters, sepia: 100, grayscale: 0 })} className="bg-gray-700 py-2 rounded-lg text-sm hover:bg-gray-600 transition-colors">Sepia</button>
-                            <button onClick={() => setFilters({ ...filters, grayscale: 0, sepia: 0 })} className="bg-gray-700 py-2 rounded-lg text-sm hover:bg-gray-600 transition-colors">Color</button>
-                            <button onClick={() => setFilters(initialFilterState)} className="bg-purple-600 py-2 rounded-lg text-sm font-bold hover:bg-purple-700 transition-colors">Reset All</button>
-                        </div>
-                        <div className="space-y-4">
-                            <div>
-                                <label className="block text-sm text-gray-400 mb-1">Brightness ({filters.brightness}%)</label>
-                                <input type="range" min="0" max="200" value={filters.brightness} onChange={(e) => setFilters({...filters, brightness: parseInt(e.target.value)})} className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-purple-500" />
-                            </div>
-                            <div>
-                                <label className="block text-sm text-gray-400 mb-1">Contrast ({filters.contrast}%)</label>
-                                <input type="range" min="0" max="200" value={filters.contrast} onChange={(e) => setFilters({...filters, contrast: parseInt(e.target.value)})} className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-purple-500" />
-                            </div>
-                            <div>
-                                <label className="block text-sm text-gray-400 mb-1">Blur ({filters.blur}px)</label>
-                                <input type="range" min="0" max="20" step="1" value={filters.blur} onChange={(e) => setFilters({...filters, blur: parseInt(e.target.value)})} className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-purple-500" />
-                            </div>
-                            <div>
-                                <label className="block text-sm text-gray-400 mb-1">Vignette ({filters.vignette}%)</label>
-                                <input type="range" min="0" max="100" value={filters.vignette} onChange={(e) => setFilters({...filters, vignette: parseInt(e.target.value)})} className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-purple-500" />
-                            </div>
-                             <div>
-                                <label className="block text-sm text-gray-400 mb-1">Sharpen ({filters.sharpen}%)</label>
-                                <input type="range" min="0" max="100" value={filters.sharpen} onChange={(e) => setFilters({...filters, sharpen: parseInt(e.target.value)})} className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-purple-500" />
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="bg-gray-800 p-6 rounded-lg">
-                        <h3 className="text-xl font-bold mb-4">3. {t('addText')}</h3>
-                        <input type="text" value={text} onChange={(e) => setText(e.target.value)} placeholder={t('enterText')} className="w-full bg-gray-700 p-2 rounded mb-4" />
-                        <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <label className="block text-sm text-gray-400 mb-1">{t('fontStyle')}</label>
-                                <select value={font} onChange={(e) => setFont(e.target.value)} className="w-full bg-gray-700 p-2 rounded">
-                                    <option value="serif">Playfair Display</option>
-                                    <option value="sans-serif">Roboto</option>
-                                    <option value="monospace">Monospace</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label className="block text-sm text-gray-400 mb-1">{t('textColor')}</label>
-                                <input type="color" value={color} onChange={(e) => setColor(e.target.value)} className="w-full h-10 bg-gray-700 p-1 rounded" />
-                            </div>
-                        </div>
-                    </div>
-
-                    {product.variations && (
-                        <div className="bg-gray-800 p-6 rounded-lg">
-                            <h3 className="text-xl font-bold mb-4">4. {t('selectSize')}</h3>
-                            <div className="flex flex-wrap gap-3">
-                                {product.variations.map(variation => (
-                                    <button 
-                                        key={variation.id}
-                                        onClick={() => setSelectedVariation(variation)}
-                                        className={`px-4 py-2 rounded-lg font-semibold transition-all border-2 ${
-                                            selectedVariation?.id === variation.id 
-                                            ? 'bg-purple-600 border-purple-400 text-white' 
-                                            : 'bg-gray-700 border-gray-600 hover:bg-gray-600 hover:border-gray-500'
-                                        }`}
-                                    >
-                                        {t(variation.nameKey)}
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-                    )}
 
                     {isAuthenticated && (
                         <div className="bg-gray-800 p-6 rounded-lg">
@@ -613,10 +763,10 @@ const ProductPage: React.FC<ProductPageProps> = ({ product, navigateTo, initialC
                     <div className="mt-8 flex flex-col sm:flex-row gap-4">
                         <button 
                             onClick={handleSaveToWishlist} 
-                            disabled={isSaved || !originalImageSrc}
-                            className="w-full sm:w-auto flex-grow bg-gray-700 text-white font-bold py-4 rounded-lg hover:bg-gray-600 transition-colors disabled:bg-green-600 disabled:opacity-80"
+                            disabled={isSaving || isSaved || !originalImageSrc}
+                            className="w-full sm:w-auto flex-grow bg-gray-700 text-white font-bold py-4 rounded-lg hover:bg-gray-600 transition-colors disabled:bg-green-600 disabled:opacity-80 disabled:cursor-not-allowed"
                         >
-                            {isSaved ? t('saved') : t('saveToWishlist')}
+                            {getSaveButtonText()}
                         </button>
                         <button 
                             onClick={handleAddToCart}
@@ -635,7 +785,7 @@ const ProductPage: React.FC<ProductPageProps> = ({ product, navigateTo, initialC
                                     Added!
                                 </>
                             ) : (
-                                `${t('addToCart')} - ₹${selectedVariation ? selectedVariation.price : product.price}`
+                                `${t('addToCart')} - ₹${currentPrice}`
                             )}
                         </button>
                     </div>
@@ -643,18 +793,18 @@ const ProductPage: React.FC<ProductPageProps> = ({ product, navigateTo, initialC
             </div>
             {/* Reviews Section */}
             <div className="mt-16 animate-fade-in-up">
-                <h3 className="text-3xl font-serif font-bold border-l-4 border-purple-500 pl-4 mb-6">{t('reviews')}</h3>
+                <h3 className="text-3xl font-serif font-bold border-l-4 border-purple-500 pl-4 mb-6">Reviews</h3>
 
                 {isAuthenticated && (
                     <div className="bg-gray-800 p-6 rounded-lg mb-8">
-                        <h4 className="text-xl font-bold mb-4">{t('writeReview')}</h4>
+                        <h4 className="text-xl font-bold mb-4">Write a Review</h4>
                         <form onSubmit={handleReviewSubmit}>
                             <div className="mb-4">
-                                <label htmlFor="rating" className="block text-sm font-medium text-gray-400 mb-2">{t('yourRating')}</label>
+                                <label htmlFor="rating" className="block text-sm font-medium text-gray-400 mb-2">Your Rating</label>
                                 <InteractiveStarRating rating={newRating} setRating={setNewRating} />
                             </div>
                             <div className="mb-4">
-                                <label htmlFor="comment" className="block text-sm font-medium text-gray-400 mb-2">{t('yourComment')}</label>
+                                <label htmlFor="comment" className="block text-sm font-medium text-gray-400 mb-2">Your Comment</label>
                                 <textarea 
                                     id="comment" 
                                     rows={4} 
@@ -670,7 +820,7 @@ const ProductPage: React.FC<ProductPageProps> = ({ product, navigateTo, initialC
                                 disabled={isSubmittingReview}
                                 className="bg-purple-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-purple-700 transition-colors disabled:bg-gray-500"
                             >
-                                {isSubmittingReview ? t('submitting') : t('submitReview')}
+                                {isSubmittingReview ? "Submitting..." : "Submit Review"}
                             </button>
                         </form>
                     </div>
@@ -689,7 +839,7 @@ const ProductPage: React.FC<ProductPageProps> = ({ product, navigateTo, initialC
                             <p className="text-gray-300 py-2">{review.comment}</p>
                             <p className="text-xs text-gray-500 text-right mt-2">{new Date(review.date).toLocaleDateString()}</p>
                         </div>
-                    )) : <p className="text-gray-500 text-center py-8">{t('noReviews')}</p>}
+                    )) : <p className="text-gray-500 text-center py-8">No reviews yet for this product.</p>}
                 </div>
             </div>
 

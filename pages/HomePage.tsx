@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import type { Product, Category } from '../types';
 import { PRODUCTS, CATEGORIES, CAROUSEL_SLIDES } from '../constants';
 import { useLocalization } from '../context/LocalizationContext';
@@ -12,62 +12,116 @@ interface HomePageProps {
     navigateTo: (page: Page) => void;
 }
 
+type SortOption = 'relevance' | 'priceAsc' | 'priceDesc' | 'ratingDesc';
+
 const HomePage: React.FC<HomePageProps> = ({ onProductSelect, searchQuery }) => {
     const { t } = useLocalization();
+    const [selectedCategory, setSelectedCategory] = useState<string>('all');
+    const [sortOption, setSortOption] = useState<SortOption>('relevance');
 
-    const searchedProducts = useMemo(() => {
+    const filteredAndSortedProducts = useMemo(() => {
+        let products = [...PRODUCTS];
+
+        // 1. Filter by search query
         const query = searchQuery.trim().toLowerCase();
-        if (!query) return PRODUCTS;
-        return PRODUCTS.filter(p => t(p.nameKey).toLowerCase().includes(query));
-    }, [searchQuery, t]);
+        if (query) {
+            products = products.filter(p => t(p.nameKey).toLowerCase().includes(query));
+        }
 
-    const renderSearchedProducts = () => (
+        // 2. Filter by category
+        if (selectedCategory !== 'all') {
+            products = products.filter(p => p.categoryKey === selectedCategory);
+        }
+
+        // 3. Sort
+        switch (sortOption) {
+            case 'priceAsc':
+                products.sort((a, b) => a.price - b.price);
+                break;
+            case 'priceDesc':
+                products.sort((a, b) => b.price - a.price);
+                break;
+            case 'ratingDesc':
+                products.sort((a, b) => (b.averageRating || 0) - (a.averageRating || 0));
+                break;
+            case 'relevance':
+            default:
+                // Keep original order which is considered "relevance"
+                break;
+        }
+        return products;
+    }, [searchQuery, selectedCategory, sortOption, t]);
+
+    const renderProducts = () => (
         <section id="products">
-            {searchedProducts.length > 0 ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 animate-fade-in-up">
-                    {searchedProducts.map(product => (
+            {filteredAndSortedProducts.length > 0 ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 animate-fade-in-up">
+                    {filteredAndSortedProducts.map(product => (
                         <ProductCard key={product.id} product={product} onSelect={onProductSelect} />
                     ))}
                 </div>
             ) : (
                 <div className="text-center py-16 animate-fade-in-up">
                     <h3 className="text-2xl font-serif text-gray-400">{t('noResults')}</h3>
-                    <p className="text-gray-500 mt-2">Try adjusting your search term.</p>
+                    <p className="text-gray-500 mt-2">Try adjusting your search or filters.</p>
                 </div>
             )}
         </section>
     );
 
-    const renderCategorizedProducts = () => {
-        return Object.entries(CATEGORIES as { [key: string]: Category }).map(([key, category]) => {
-            const categoryProducts = PRODUCTS.filter(p => p.categoryKey === key);
-            if (categoryProducts.length === 0) return null;
-
-            return (
-                <section key={key} className="relative rounded-2xl overflow-hidden my-12 animate-fade-in-up shadow-2xl shadow-purple-900/20">
-                    <img src={category.backgroundImageUrl} alt={t(category.nameKey)} className="absolute inset-0 w-full h-full object-cover blur-sm opacity-30" />
-                    <div className="absolute inset-0 bg-gray-900/60"></div>
-
-                    <div className="relative z-10 p-8 md:p-12">
-                        <h2 className="text-4xl md:text-5xl font-serif font-bold text-center mb-8 text-white drop-shadow-lg">
-                            {t(category.nameKey)}
-                        </h2>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-                            {categoryProducts.map(product => (
-                                <ProductCard key={product.id} product={product} onSelect={onProductSelect} />
-                            ))}
-                        </div>
-                    </div>
-                </section>
-            );
-        });
-    };
-
     return (
         <div className="space-y-8">
             {!searchQuery && <Carousel slides={CAROUSEL_SLIDES} />}
+            
+            {/* Filter and Sort Controls */}
+            <div className="bg-gray-800/60 backdrop-blur-sm p-4 rounded-lg sticky top-[70px] z-40 animate-fade-in-up border border-gray-700">
+                <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+                    {/* Category Filters */}
+                    <div className="flex flex-wrap items-center gap-2">
+                        <button 
+                            onClick={() => setSelectedCategory('all')} 
+                            className={`px-4 py-2 text-sm font-semibold rounded-full transition-all duration-200 ${
+                                selectedCategory === 'all' 
+                                ? 'bg-purple-600 text-white shadow-md' 
+                                : 'bg-gray-700 hover:bg-gray-600'
+                            }`}
+                        >
+                            {t('all')}
+                        </button>
+                        {Object.entries(CATEGORIES).map(([key, category]) => (
+                             <button 
+                                key={key}
+                                onClick={() => setSelectedCategory(key)} 
+                                className={`px-4 py-2 text-sm font-semibold rounded-full transition-all duration-200 ${
+                                    selectedCategory === key 
+                                    ? 'bg-purple-600 text-white shadow-md' 
+                                    : 'bg-gray-700 hover:bg-gray-600'
+                                }`}
+                            >
+                                {t(category.nameKey)}
+                            </button>
+                        ))}
+                    </div>
 
-            {searchQuery ? renderSearchedProducts() : renderCategorizedProducts()}
+                    {/* Sort Dropdown */}
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                        <label htmlFor="sort-select" className="text-gray-400 text-sm">{t('sortBy')}</label>
+                        <select 
+                            id="sort-select" 
+                            value={sortOption} 
+                            onChange={(e) => setSortOption(e.target.value as SortOption)} 
+                            className="bg-gray-700 border border-gray-600 rounded-full px-4 py-2 text-sm text-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all"
+                        >
+                            <option value="relevance">{t('relevance')}</option>
+                            <option value="priceAsc">{t('priceAsc')}</option>
+                            <option value="priceDesc">{t('priceDesc')}</option>
+                            <option value="ratingDesc">{t('ratingDesc')}</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            {renderProducts()}
         </div>
     );
 };

@@ -8,6 +8,45 @@ if (!API_KEY) {
 }
 const ai = new GoogleGenAI({ apiKey: API_KEY! });
 
+// Cache for product descriptions to avoid redundant API calls during a session
+const descriptionCache = new Map<string, string>();
+
+export const generateProductDescription = async (productName: string, productBaseDescription: string): Promise<string> => {
+    if (!API_KEY) {
+        throw new Error("Gemini API key is not configured.");
+    }
+
+    const cacheKey = `${productName}|${productBaseDescription}`;
+    if (descriptionCache.has(cacheKey)) {
+        return descriptionCache.get(cacheKey)!;
+    }
+
+    try {
+        const prompt = `You are a creative marketing assistant for an e-commerce store called 'GiftScape Studio'. Write a short, engaging, and cinematic product description for the following product. Keep it to 2-3 sentences max. Do not use markdown or special formatting.
+        
+        Product Name: "${productName}"
+        Keywords/Base Description: "${productBaseDescription}"`;
+
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: prompt,
+        });
+
+        const description = response.text.trim();
+        if (!description) {
+             throw new Error("AI returned an empty description.");
+        }
+        
+        descriptionCache.set(cacheKey, description);
+        return description;
+    } catch (error) {
+        console.error(`Error calling Gemini API for product description for "${productName}":`, error);
+        // Return base description as a fallback
+        return productBaseDescription;
+    }
+};
+
+
 export const restorePhotoWithAI = async (base64ImageData: string, mimeType: string): Promise<string> => {
     if (!API_KEY) {
         throw new Error("Gemini API key is not configured.");

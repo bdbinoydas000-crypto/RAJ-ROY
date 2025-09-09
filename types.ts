@@ -1,9 +1,12 @@
 
+
 export interface ProductVariation {
     id: string;
     nameKey: string;
     price: number;
     imageUrl: string;
+    width?: number;
+    height?: number;
 }
 
 export interface Review {
@@ -26,6 +29,7 @@ export interface Product {
     variations?: ProductVariation[];
     averageRating?: number;
     reviewCount?: number;
+    pricePerSquareInch?: number;
 }
 
 export interface CartItem {
@@ -33,9 +37,8 @@ export interface CartItem {
     product: Product;
     quantity: number;
     variation?: ProductVariation;
-    customization?: {
+    customization?: Partial<CustomizationState> & {
         imageUrl: string;
-        text: string;
     };
 }
 
@@ -56,6 +59,11 @@ export interface CustomizationState {
     font: string;
     color: string;
     filters: FilterState;
+    photoSize: string;
+    customWidth?: number;
+    customHeight?: number;
+    mind?: string;
+    instruction?: string;
 }
 
 export interface WishlistItem {

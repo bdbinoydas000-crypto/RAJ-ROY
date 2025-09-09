@@ -1,4 +1,4 @@
-import React, { createContext, useState, useContext, ReactNode, useEffect } from 'react';
+import React, { createContext, useState, useContext, ReactNode, useEffect, useCallback } from 'react';
 import type { WishlistItem, Product, CustomizationState } from '../types';
 
 interface WishlistContextType {
@@ -34,28 +34,33 @@ export const WishlistProvider: React.FC<{ children: ReactNode }> = ({ children }
         }
     }, [wishlistItems]);
 
-    const addToWishlist = (product: Product, customization: CustomizationState) => {
+    const isItemInWishlist = useCallback((product: Product, customization: CustomizationState): boolean => {
+         // A simple JSON.stringify check to see if an identical customization exists.
+         if (!customization.originalImageSrc) return false;
+         const customString = JSON.stringify(customization);
+         return wishlistItems.some(item => 
+            item.product.id === product.id && 
+            JSON.stringify(item.customization) === customString
+         );
+    }, [wishlistItems]);
+    
+    const addToWishlist = useCallback((product: Product, customization: CustomizationState) => {
+        if (isItemInWishlist(product, customization)) {
+            console.log("This design is already in the wishlist.");
+            return;
+        }
+
         const newItem: WishlistItem = {
             id: Date.now().toString(),
             product,
             customization,
         };
         setWishlistItems(prevItems => [...prevItems, newItem]);
-    };
+    }, [isItemInWishlist]);
 
-    const removeFromWishlist = (itemId: string) => {
+    const removeFromWishlist = useCallback((itemId: string) => {
         setWishlistItems(prevItems => prevItems.filter(item => item.id !== itemId));
-    };
-
-    const isItemInWishlist = (product: Product, customization: CustomizationState): boolean => {
-         // A simple JSON.stringify check to see if an identical customization exists.
-         // This could be more sophisticated if needed.
-         const customString = JSON.stringify(customization);
-         return wishlistItems.some(item => 
-            item.product.id === product.id && 
-            JSON.stringify(item.customization) === customString
-         );
-    }
+    }, []);
 
     return (
         <WishlistContext.Provider value={{ wishlistItems, addToWishlist, removeFromWishlist, isItemInWishlist }}>
